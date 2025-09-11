@@ -23,7 +23,8 @@ size = comm.Get_size()
 def read_data(file, header=0, chunksize=100000):
     """
     Each rank reads its assigned slice of rows from the CSV in chunks.
-    Returns concatenated X_local, y_local arrays for that rank.
+    Splits data into test and train sets after preprocessing
+    Returns concatenated X_train, y_train, X_test, y_test  for that rank.
     TODO evaluate performance of different chunk sizes with the actual dataset
     TODO change print statements to logging throughout the code
     """
@@ -74,11 +75,17 @@ def read_data(file, header=0, chunksize=100000):
     if X_parts:
         X_local = np.vstack(X_parts)
         y_local = np.concatenate(y_parts)
+        X_train, y_train, X_test, y_test = split_test_train(X_local, y_local, test_ratio=0.2, random_state=42)
+        print(f"[Rank {rank}] has split test-train data with {X_test.shape[0]} - {X_train.shape[0]} split")
+    
+    # Although not the case with the current dataset as it has only 3% missing values,
+    # this else case is to handle the edge case of a process that gets no data after preprocessing
     else:
-        X_local = np.empty((0, 0))
-        y_local = np.empty((0,))
+        X_train, X_test = np.empty((0, 0)), np.empty((0, 0))
+        y_train, y_test = np.empty((0,)), np.empty((0,))
+        print(f"[Rank {rank}] has no data after preprocessing")
 
-    return X_local, y_local
+    return X_train, y_train, X_test, y_test
 
 def count_rows(file):
     '''
@@ -97,7 +104,6 @@ def preprocess_chunk(df):
     - drop NAs and filter invalid data
     - TODO
         - add some form of encoding for categorical features?
-        - normalize data
     Returns (X, y).
     """
     df = df[
@@ -156,6 +162,29 @@ def get_datetime_features(df, col_name):
     }, index=df.index)
     return pd.concat([df, features], axis=1)
 
+def split_test_train(X, y, test_ratio, random_state):
+    '''
+    Split the data into test and train sets given a test ratio and a random seed
+    Returns X_train, y_train, X_test, y_test in that order
+    '''
+    # setting a random seed to make the shuffling deterministic
+    np.random.seed(random_state)
+
+    num_samples = X.shape[0]
+    indices = np.arange(num_samples)
+
+    # shuffling indices so the test-train split is random
+    np.random.shuffle(indices)
+
+    test_size = int(num_samples * test_ratio)
+    test_indices = indices[:test_size]
+    train_indices = indices[test_size:]
+
+    X_train, y_train = X[train_indices], y[train_indices]
+    X_test, y_test = X[test_indices], y[test_indices]
+
+    return X_train, y_train, X_test, y_test
+
 # ----------------------------------------------------
 # Main
 # ----------------------------------------------------
@@ -164,8 +193,8 @@ if __name__ == "__main__":
     # but the CPU utilization is mostly within 75% on my machine
     # for implementation & testing purposes, using the subset of 1MM rows for now
     #X_local, y_local = read_data("../data/nytaxi2022.csv", header=0, chunksize=100000)
-    X_local, y_local = read_data("../data/nytaxi2022_subset.csv", header=0, chunksize=100000)    
-    print(f"[Rank {rank}] got {X_local.shape[0]} samples, {X_local.shape[1]} features.")
+    X_train, y_train, X_test, y_test = read_data("../data/nytaxi2022_subset.csv", header=0, chunksize=100000)    
+    print(f"[Rank {rank}] got {X_train.shape[0]} training samples, {X_test.shape[0]} testing samples, {X_train.shape[1]} features.")
     comm.Barrier()
     if rank == 0:
         print("Data distribution done, ready for normalization/SGD...")
