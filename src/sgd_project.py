@@ -295,7 +295,7 @@ if __name__ == "__main__":
     # but the CPU utilization is mostly within 75% on my machine
     # for implementation & testing purposes, using the subset of 1MM rows for now
     #X_local, y_local = read_data("../data/nytaxi2022.csv", header=0, chunksize=100000)
-    X_train, y_train, X_test, y_test, feature_columns, skip_normalization_columns = read_data("../data/nytaxi2022_subset.csv", header=0, chunksize=100000)    
+    X_train, y_train, X_test, y_test, feature_columns, skip_normalization_columns = read_data("../data/nytaxi2022.csv", header=0, chunksize=100000)    
     print(f"[Rank {rank}] got {X_train.shape[0]} training samples, {X_test.shape[0]} testing samples, {X_train.shape[1]} features.")
     X_train_normalized, y_train_normalized = normalize(X_train, y_train, feature_columns, skip_normalization_columns)
     print(f"[Rank {rank}] got {X_train_normalized.shape[0]} training samples, {X_train_normalized.shape[1]} features.")
