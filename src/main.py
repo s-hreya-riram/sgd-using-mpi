@@ -2,6 +2,8 @@ from mpi4py import MPI
 import pandas as pd
 import numpy as np
 import warnings
+from preprocess import preprocess_chunk
+from utils import count_rows, get_datetime_features, split_test_train
 
 # Suppressing the timestamp parsing warning from pandas to keep the terminal logs clean
 warnings.filterwarnings(
@@ -89,142 +91,6 @@ def read_data(file, header=0, chunksize=100000):
 
     return X_train, y_train, X_test, y_test, feature_columns, skip_normalization_columns
 
-def count_rows(file):
-    '''
-    This function counts the number of rows in the input CSV file.
-    This is done so that process with rank 0 can identify the row count
-    and broadcast it to the other processes
-    '''
-    with open(file, "r") as f:
-        return sum(1 for _ in f) - 1  # subtract header
-
-
-def preprocess_chunk(df):
-    """
-    Preprocess one chunk of the taxi dataset.
-    - narrowing down to the columns mentioned in the problem statement
-    - drop NAs and filter invalid data
-    - add encoding for categorical variables (one-hot or frequency encoding depending on frequency)
-    Returns (X, y).
-    """
-    df = df[
-        [
-            "tpep_pickup_datetime",
-            "tpep_dropoff_datetime",
-            "passenger_count",
-            "trip_distance",
-            "RatecodeID",
-            "PULocationID",
-            "DOLocationID",
-            "payment_type",
-            "extra",
-            "total_amount",
-        ]
-    ].copy()
-    
-    # Drop rows with any NA values
-    df.dropna(inplace=True)
-    
-    # Clean extra and total_amount values to be non-negative and positive respectively 
-    # based on the attribute descriptions from Kaggle: https://www.kaggle.com/datasets/diishasiing/revenue-for-cab-drivers/data
-    df = df[df["extra"] >= 0]
-    df = df[df["total_amount"] > 0]
-
-    # Convert datetime columns (vectorized)
-    df.loc[:, "tpep_pickup_datetime"] = pd.to_datetime(df["tpep_pickup_datetime"], errors="coerce")
-    df.loc[:, "tpep_dropoff_datetime"] = pd.to_datetime(df["tpep_dropoff_datetime"], errors="coerce")
-
-    # Derive datetime features
-    df = get_datetime_features(df, "tpep_pickup_datetime")
-    df = get_datetime_features(df, "tpep_dropoff_datetime")
-
-    # Trip duration in minutes
-    df["trip_duration"] = (df["tpep_dropoff_datetime"] - df["tpep_pickup_datetime"]).dt.total_seconds() / 60
-
-    # Drop original datetime cols
-    df.drop(columns=["tpep_pickup_datetime", "tpep_dropoff_datetime"], inplace=True)
-
-    # Since there are 6 unique values for RatecodeID, 263 for PULocationID, 262 for DOLocationID and 5 for payment_type
-    # taking into account the volume of data, using one hot encoding for ratecodeId and payment_type,
-    # using frequency encoding for PULocationID and DOLocationID
-
-    # One-hot encoding RatecodeID and payment_type, having to manually specify expected columns to address the issue from 
-    # testing - some chunks may not have all categories, that was causing inconsistent number of columns
-    # across chunks and causing errors like "ValueError: all the input array dimensions except for the concatenation axis
-    # must match exactly, but along dimension 1, the array at index 0 has size 28 and the array at index 1 has size 29"
-    # hardcoded values are from the exploratory data analysis notebook
-    # TODO explore refactoring this to avoid hardcoding
-    expected_ratecode_cols = [f"RatecodeID_{i}" for i in [1, 2, 3, 4, 5, 6, 99]]
-    expected_payment_cols = [f"payment_type_{i}" for i in [1, 2, 3, 4, 5]]
-
-    df = pd.get_dummies(df, columns=["RatecodeID", "payment_type"], prefix=["RatecodeID", "payment_type"])
-
-    # Add missing dummy columns with 0s
-    for col in expected_ratecode_cols + expected_payment_cols:
-        if col not in df:
-            df[col] = 0
-
-    # Keep column order consistent
-    df = df.reindex(columns=sorted(df.columns))
-
-    # frequency encode PULocationID and DOLocationID
-    for col in ["PULocationID", "DOLocationID"]:
-        freq = df[col].value_counts(normalize=True)
-        df[col] = df[col].map(freq)
-
-    # Tracking feature_columns and skip_normalization_columns to skip normalization of the attributes
-    # that are the derived date-time attributes, were one-hot encoded or frequency encoded above
-    # TODO see if there is an alternative to manually specifying the column names
-    skip_normalization_columns = [column for column in df.columns if column.startswith("RatecodeID_") or 
-                        column.startswith("payment_type_") or 
-                        column.startswith("tpep_pickup_datetime_") or
-                        column.startswith("tpep_dropoff_datetime_") or
-                        column in ["PULocationID", "DOLocationID"]]
-    feature_columns = [c for c in df.columns if c != "total_amount"]
-    # ensuring X and y are of type float64 as object type arrays cause errors with MPI Allreduce
-    X = df[feature_columns].values.astype(np.float64) 
-    y = df["total_amount"].values.astype(np.float64)
-
-    return X, y, feature_columns, skip_normalization_columns
-
-def get_datetime_features(df, col_name):
-    '''
-    Derive datetime features from a datetime column
-    '''
-    dt = df[col_name].dt
-    features = pd.DataFrame({
-        col_name + "_day": dt.day,
-        col_name + "_month": dt.month,
-        col_name + "_year": dt.year,
-        col_name + "_hour": dt.hour,
-        col_name + "_minute": dt.minute,
-        col_name + "_second": dt.second,
-    }, index=df.index)
-    return pd.concat([df, features], axis=1)
-
-def split_test_train(X, y, test_ratio, random_state):
-    '''
-    Split the data into test and train sets given a test ratio and a random seed
-    Returns X_train, y_train, X_test, y_test in that order
-    '''
-    # setting a random seed to make the shuffling deterministic
-    np.random.seed(random_state)
-
-    num_samples = X.shape[0]
-    indices = np.arange(num_samples)
-
-    # shuffling indices so the test-train split is random
-    np.random.shuffle(indices)
-
-    test_size = int(num_samples * test_ratio)
-    test_indices = indices[:test_size]
-    train_indices = indices[test_size:]
-
-    X_train, y_train = X[train_indices], y[train_indices]
-    X_test, y_test = X[test_indices], y[test_indices]
-
-    return X_train, y_train, X_test, y_test, (num_samples - test_size), test_size
-
 def normalize(training_feature_local, training_label_local, feature_columns, skip_normalization_columns=[]):
     """Following the same process as professor did in Kernel Ridge Regression,
     calculating local sum/sq diff and then using Allreduce to get global sum/sqdiff."""
@@ -294,8 +160,8 @@ if __name__ == "__main__":
     # It takes a few mins to read and process data from the original file 
     # but the CPU utilization is mostly within 75% on my machine
     # for implementation & testing purposes, using the subset of 1MM rows for now
-    #X_local, y_local = read_data("../data/nytaxi2022.csv", header=0, chunksize=100000)
-    X_train, y_train, X_test, y_test, feature_columns, skip_normalization_columns = read_data("../data/nytaxi2022.csv", header=0, chunksize=100000)    
+    #X_local, y_local, X_test, y_test, feature_columns, skip_normalization_columns = read_data("../data/nytaxi2022.csv", header=0, chunksize=100000)
+    X_train, y_train, X_test, y_test, feature_columns, skip_normalization_columns = read_data("../data/nytaxi2022_subset.csv", header=0, chunksize=100000)    
     print(f"[Rank {rank}] got {X_train.shape[0]} training samples, {X_test.shape[0]} testing samples, {X_train.shape[1]} features.")
     X_train_normalized, y_train_normalized = normalize(X_train, y_train, feature_columns, skip_normalization_columns)
     print(f"[Rank {rank}] got {X_train_normalized.shape[0]} training samples, {X_train_normalized.shape[1]} features.")
