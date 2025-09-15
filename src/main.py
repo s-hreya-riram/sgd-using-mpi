@@ -5,7 +5,7 @@ from processing.mpi_utils import *
 from neural_net import *
 from processing.io import read_data
 from processing.normalize import normalize
-from constants import FEATURE_COLUMNS, SKIP_NORMALIZATION_COLUMNS
+from utils.constants import FEATURE_COLUMNS, SKIP_NORMALIZATION_COLUMNS
 
 # Suppressing the timestamp parsing warning from pandas to keep the terminal logs clean
 warnings.filterwarnings(
@@ -27,5 +27,8 @@ if __name__ == "__main__":
     comm.Barrier()
     if rank == 0:
         print("Data distribution and normalization done, ready for SGD...")
+    input_dim = X_train.shape[1]
+    model = NeuralNet(input_dim, hidden_dim=16, lr=0.0001)
 
-
+    train(model, X_train, y_train, epochs=5, batch_size=1024, shuffle_seed=42)
+    evaluate(model, X_test, y_test)

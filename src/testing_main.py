@@ -5,7 +5,7 @@ from processing.mpi_utils import *
 from neural_net import *
 from processing.io import read_data
 from processing.normalize import normalize
-from constants import FEATURE_COLUMNS, SKIP_NORMALIZATION_COLUMNS
+from utils.constants import FEATURE_COLUMNS, SKIP_NORMALIZATION_COLUMNS
 
 # Suppressing the timestamp parsing warning from pandas to keep the terminal logs clean
 warnings.filterwarnings(

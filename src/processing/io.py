@@ -59,7 +59,7 @@ def read_data(file, header=0, chunksize=100000):
     if X_parts:
         X_local = np.vstack(X_parts)
         y_local = np.concatenate(y_parts)
-        X_train, y_train, X_test, y_test, train_size, test_size = split_test_train(X_local, y_local, test_ratio=0.2, random_state=42)
+        X_train, y_train, X_test, y_test, train_size, test_size = split_test_train(X_local, y_local, test_ratio=0.3, random_state=42)
         print(f"[Rank {rank}] has split test-train data with {train_size} - {test_size} split")
 
     

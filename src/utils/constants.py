@@ -1,5 +1,5 @@
 import numpy as np
-from activation_functions import *
+from utils.activation_functions import *
 
 # Define expected input columns
 EXPECTED_INPUT_COLUMNS = [
@@ -28,16 +28,15 @@ EXPECTED_DATETIME_FEATURES = [
 ]
 
 # Complete list of features (excluding label)
-EXPECTED_SCHEMA = (
-    ["passenger_count", "trip_distance", "extra", "PULocationID", "DOLocationID"] 
+FEATURE_COLUMNS = (
+    ["passenger_count", "trip_distance", "extra", "PULocationID", "DOLocationID"]
     + EXPECTED_RATECODE_COLUMNS
     + EXPECTED_PAYMENT_COLUMNS
     + EXPECTED_DATETIME_FEATURES
     + ["trip_duration"]
 )
 
-FEATURE_COLUMNS = ['passenger_count', 'trip_distance', 'extra', 'PULocationID', 'DOLocationID', 'RatecodeID_1', 'RatecodeID_2', 'RatecodeID_3', 'RatecodeID_4', 'RatecodeID_5', 'RatecodeID_6', 'RatecodeID_99', 'payment_type_1', 'payment_type_2', 'payment_type_3', 'payment_type_4', 'payment_type_5', 'tpep_pickup_datetime_day', 'tpep_pickup_datetime_month', 'tpep_pickup_datetime_year', 'tpep_pickup_datetime_hour', 'tpep_pickup_datetime_minute', 'tpep_pickup_datetime_second', 'tpep_dropoff_datetime_day', 'tpep_dropoff_datetime_month', 'tpep_dropoff_datetime_year', 'tpep_dropoff_datetime_hour', 'tpep_dropoff_datetime_minute', 'tpep_dropoff_datetime_second', 'trip_duration']
-SKIP_NORMALIZATION_COLUMNS = ['PULocationID', 'DOLocationID', 'RatecodeID_1', 'RatecodeID_2', 'RatecodeID_3', 'RatecodeID_4', 'RatecodeID_5', 'RatecodeID_6', 'RatecodeID_99', 'payment_type_1', 'payment_type_2', 'payment_type_3', 'payment_type_4', 'payment_type_5', 'tpep_pickup_datetime_day', 'tpep_pickup_datetime_month', 'tpep_pickup_datetime_year', 'tpep_pickup_datetime_hour', 'tpep_pickup_datetime_minute', 'tpep_pickup_datetime_second', 'tpep_dropoff_datetime_day', 'tpep_dropoff_datetime_month', 'tpep_dropoff_datetime_year', 'tpep_dropoff_datetime_hour', 'tpep_dropoff_datetime_minute', 'tpep_dropoff_datetime_second']
+SKIP_NORMALIZATION_COLUMNS = ["PULocationID", "DOLocationID"] + EXPECTED_RATECODE_COLUMNS + EXPECTED_PAYMENT_COLUMNS
 LABEL_COLUMN = "total_amount"
 
 ACTIVATION_FUNCTION_MAP = {
