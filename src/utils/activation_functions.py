@@ -6,7 +6,9 @@ def linear_grad(z): return np.ones_like(z)
 def relu(x): return np.maximum(0, x)
 def relu_grad(z): return (z > 0).astype(np.float64)
 
-def sigmoid(x): return 1.0 / (1.0 + np.exp(-x))
+def sigmoid(x):
+    return np.where(x>=0, 1 / (1 + np.exp(-x)), np.exp(x) / (1 + np.exp(x)))
+
 def sigmoid_grad(z):
     s = sigmoid(z)
     return s * (1 - s)

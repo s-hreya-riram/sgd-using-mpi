@@ -27,6 +27,7 @@ if __name__ == "__main__":
     comm.Barrier()
     if rank == 0:
         print("Data distribution and normalization done, ready for SGD...")
+    
     input_dim = X_train.shape[1]
     model = NeuralNet(input_dim, hidden_dim=16, lr=0.0001)
-    execute_model(model, X_train, y_train, X_test, y_test, epochs=5, batch_size=2048, shuffle_seed=42)
+    execute_model(model, X_train, y_train, X_test, y_test, activation="sigmoid", epochs=5, batch_size=512, shuffle_seed=42)
