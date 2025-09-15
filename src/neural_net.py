@@ -4,6 +4,7 @@ from mpi4py import MPI
 from processing.mpi_utils import rank, size, comm
 from utils.constants import *
 from utils.activation_functions import relu, relu_grad
+from  logging.log import log_metrics
 
 class NeuralNet:
     def __init__(self, input_dim, hidden_dim=16, lr=0.01, seed=42):
@@ -96,6 +97,7 @@ def train(model, X_train, y_train, epochs=5, batch_size=32, shuffle_seed=42):
                     print(f"[DEBUG] W1 mean={np.mean(model.W1):.6f}, "
                           f"W2 mean={np.mean(model.W2):.6f}")
 
+
         if rank == 0:
             print(f"[Epoch {epoch+1}] training step done")
 
@@ -121,3 +123,12 @@ def evaluate(model, X_test, y_test):
     if rank == 0:
         print(f"Test RMSE: {rmse:.4f}")
     return rmse
+
+def execute_model(model, X_train, y_train, X_test, y_test, epochs=5, batch_size=32, shuffle_seed=42):
+    train(model, X_train, y_train, epochs=epochs, batch_size=batch_size, shuffle_seed=shuffle_seed)
+    test_rmse = evaluate(model, X_test, y_test)
+    # Log the results
+    log_metrics(epochs, batch_size, "relu", test_rmse, logfile="results/training_log.csv")
+
+    if rank == 0:
+        print(f"[Epoch {epochs}] Test RMSE: {test_rmse:.4f}")

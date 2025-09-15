@@ -29,6 +29,4 @@ if __name__ == "__main__":
         print("Data distribution and normalization done, ready for SGD...")
     input_dim = X_train.shape[1]
     model = NeuralNet(input_dim, hidden_dim=16, lr=0.0001)
-
-    train(model, X_train, y_train, epochs=5, batch_size=1024, shuffle_seed=42)
-    evaluate(model, X_test, y_test)
+    execute_model(model, X_train, y_train, X_test, y_test, epochs=5, batch_size=2048, shuffle_seed=42)
