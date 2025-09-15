@@ -1,4 +1,3 @@
-from utils import get_datetime_features
 from constants import EXPECTED_SCHEMA
 import numpy as np
 import pandas as pd
@@ -93,3 +92,18 @@ def preprocess_chunk(df):
     y = df["total_amount"].values.astype(np.float64)
 
     return X, y, feature_columns, skip_normalization_columns
+
+def get_datetime_features(df, col_name):
+    '''
+    Derive datetime features from a datetime column
+    '''
+    dt = df[col_name].dt
+    features = pd.DataFrame({
+        col_name + "_day": dt.day,
+        col_name + "_month": dt.month,
+        col_name + "_year": dt.year,
+        col_name + "_hour": dt.hour,
+        col_name + "_minute": dt.minute,
+        col_name + "_second": dt.second,
+    }, index=df.index)
+    return pd.concat([df, features], axis=1)
