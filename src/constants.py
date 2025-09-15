@@ -32,3 +32,7 @@ EXPECTED_SCHEMA = (
     + EXPECTED_DATETIME_FEATURES
     + ["trip_duration"]
 )
+
+FEATURE_COLUMNS = ['passenger_count', 'trip_distance', 'extra', 'PULocationID', 'DOLocationID', 'RatecodeID_1', 'RatecodeID_2', 'RatecodeID_3', 'RatecodeID_4', 'RatecodeID_5', 'RatecodeID_6', 'RatecodeID_99', 'payment_type_1', 'payment_type_2', 'payment_type_3', 'payment_type_4', 'payment_type_5', 'tpep_pickup_datetime_day', 'tpep_pickup_datetime_month', 'tpep_pickup_datetime_year', 'tpep_pickup_datetime_hour', 'tpep_pickup_datetime_minute', 'tpep_pickup_datetime_second', 'tpep_dropoff_datetime_day', 'tpep_dropoff_datetime_month', 'tpep_dropoff_datetime_year', 'tpep_dropoff_datetime_hour', 'tpep_dropoff_datetime_minute', 'tpep_dropoff_datetime_second', 'trip_duration']
+SKIP_NORMALIZATION_COLUMNS = ['PULocationID', 'DOLocationID', 'RatecodeID_1', 'RatecodeID_2', 'RatecodeID_3', 'RatecodeID_4', 'RatecodeID_5', 'RatecodeID_6', 'RatecodeID_99', 'payment_type_1', 'payment_type_2', 'payment_type_3', 'payment_type_4', 'payment_type_5', 'tpep_pickup_datetime_day', 'tpep_pickup_datetime_month', 'tpep_pickup_datetime_year', 'tpep_pickup_datetime_hour', 'tpep_pickup_datetime_minute', 'tpep_pickup_datetime_second', 'tpep_dropoff_datetime_day', 'tpep_dropoff_datetime_month', 'tpep_dropoff_datetime_year', 'tpep_dropoff_datetime_hour', 'tpep_dropoff_datetime_minute', 'tpep_dropoff_datetime_second']
+LABEL_COLUMN = "total_amount"
