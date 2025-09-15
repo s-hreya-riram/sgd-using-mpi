@@ -1,4 +1,4 @@
-from constants import EXPECTED_SCHEMA
+from constants import EXPECTED_SCHEMA, EXPECTED_INPUT_COLUMNS, EXPECTED_RATECODE_COLUMNS, EXPECTED_PAYMENT_COLUMNS
 import numpy as np
 import pandas as pd
 
@@ -10,20 +10,7 @@ def preprocess_chunk(df):
     - add encoding for categorical variables (one-hot or frequency encoding depending on frequency)
     Returns (X, y).
     """
-    df = df[
-        [
-            "tpep_pickup_datetime",
-            "tpep_dropoff_datetime",
-            "passenger_count",
-            "trip_distance",
-            "RatecodeID",
-            "PULocationID",
-            "DOLocationID",
-            "payment_type",
-            "extra",
-            "total_amount",
-        ]
-    ].copy()
+    df = df[EXPECTED_INPUT_COLUMNS].copy()
     
     # Drop rows with any NA values
     df.dropna(inplace=True)
@@ -57,9 +44,6 @@ def preprocess_chunk(df):
     # must match exactly, but along dimension 1, the array at index 0 has size 28 and the array at index 1 has size 29"
     # hardcoded values are from the exploratory data analysis notebook
     # TODO explore refactoring this to avoid hardcoding
-    expected_ratecode_cols = [f"RatecodeID_{i}" for i in [1, 2, 3, 4, 5, 6, 99]]
-    expected_payment_cols = [f"payment_type_{i}" for i in [1, 2, 3, 4, 5]]
-
     df = pd.get_dummies(df, columns=["RatecodeID", "payment_type"], prefix=["RatecodeID", "payment_type"])
 
     for col in ["PULocationID", "DOLocationID"]:
@@ -67,7 +51,7 @@ def preprocess_chunk(df):
         df[col] = df[col].map(freq)
 
     # Add missing dummy columns with 0s
-    for col in expected_ratecode_cols + expected_payment_cols:
+    for col in EXPECTED_RATECODE_COLUMNS + EXPECTED_PAYMENT_COLUMNS:
         if col not in df:
             df[col] = 0
 
