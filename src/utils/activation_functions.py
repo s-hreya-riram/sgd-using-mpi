@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.special import expit
 
 def linear(x): return x
 def linear_grad(z): return np.ones_like(z)
@@ -7,11 +8,13 @@ def relu(x): return np.maximum(0, x)
 def relu_grad(z): return (z > 0).astype(np.float64)
 
 def sigmoid(x):
-    return np.where(x>=0, 1 / (1 + np.exp(-x)), np.exp(x) / (1 + np.exp(x)))
+    #return np.where(x>=0, 1 / (1 + np.exp(-x)), np.exp(x) / (1 + np.exp(x)))
+    return expit(x)
 
 def sigmoid_grad(z):
-    s = sigmoid(z)
-    return s * (1 - s)
+    return sigmoid(z) * (1 - sigmoid(z))
 
 def tanh(x): return np.tanh(x)
 def tanh_grad(z): return 1 - np.tanh(z) ** 2
+
+#TODO try using softmax function, if it has the same issue as sigmoid, we need approximations
