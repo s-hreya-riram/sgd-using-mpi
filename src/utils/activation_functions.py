@@ -8,7 +8,6 @@ def relu(x): return np.maximum(0, x)
 def relu_grad(z): return (z > 0).astype(np.float64)
 
 def sigmoid(x):
-    #return np.where(x>=0, 1 / (1 + np.exp(-x)), np.exp(x) / (1 + np.exp(x)))
     return expit(x)
 
 def sigmoid_grad(z):
