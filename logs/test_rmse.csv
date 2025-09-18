@@ -1,8 +1,0 @@
-epoch,batch_size,activation,test_rmse
-5,512,relu,14.077447
-5,512,tanh,14.147292
-5,512,relu,120.411916
-5,512,relu,120.271062
-5,512,sigmoid,118.049453
-5,512,linear,118.696551
-5,512,sigmoid,118.049453

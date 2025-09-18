@@ -111,6 +111,62 @@ def train_on_batch(model, X_batch, y_batch):
     local_sum_of_squares = np.sum((y_pred_local - y_local.reshape(-1, 1)) ** 2)
     return local_sum_of_squares
 
+def train_on_batch(model, X_batch, y_batch):
+    """
+    For a given batch of training data, we do the following steps:
+     - calculate y_pred for train data (batch) using forward propagation, 
+     - backpropagate error between y_pred and y_train (batch) to get the local gradients 
+     - execute MPI allreduce to sum the local gradients to get the global gradients, 
+     - apply gradient updates to adjust the weights of the model
+     - compute and return the local sum of squared errors for the global train RMSE calculation in train()
+    """
+    batch_size = X_batch.shape[0]
+    rank_batch_size = int(np.ceil(batch_size / size))  # splitting nearly equally across ranks
+
+    # Determine slice for this rank
+    begin_index_local = rank * rank_batch_size
+    end_index_local = min((rank + 1) * rank_batch_size, batch_size)
+    X_local = X_batch[begin_index_local:end_index_local]
+    y_local = y_batch[begin_index_local:end_index_local]
+
+    if X_local.shape[0] > 0:
+        # Forward propagation on local slice
+        y_pred_local = model.forward(X_local)
+        # Compute local gradients
+        local_gradients = model.backward(X_local, y_local, y_pred_local)
+    else:
+        # Skipping forward and backward propagation if no data for this rank
+        local_gradients = [
+            np.zeros_like(model.W1),
+            np.zeros_like(model.b1),
+            np.zeros_like(model.W2),
+            np.zeros_like(model.b2)
+        ]
+        y_pred_local = np.zeros((0,1))
+
+    # get number of samples on this rank
+    num_samples_local = X_local.shape[0]
+
+    # TODO revisit if weighing is a good idea
+    # sum gradients weighted by local sample size to account for uneven distribution
+    weighted_local_gradients = [local_gradient * num_samples_local for local_gradient in local_gradients]
+
+    # Aggregate gradients across ranks using MPI SUM
+    summed_gradients = [comm.allreduce(g, op=MPI.SUM) for g in weighted_local_gradients]
+
+    # divide by total number of samples contributing
+    total_samples = comm.allreduce(num_samples_local, op=MPI.SUM)
+    global_gradients = [g / total_samples for g in summed_gradients]
+
+    # update the weights of the model using the average global gradients
+    model.apply_gradients(global_gradients)
+
+    # Compute local sum of squared errors for RMSE calculation
+    local_sum_of_squares = np.sum((y_pred_local - y_local.reshape(-1, 1)) ** 2)
+    return local_sum_of_squares
+
+
+
 def train(model, X_train, y_train, epochs, batch_size, seed):
     iteration = 0 
     total_sum_of_squares = 0.0
