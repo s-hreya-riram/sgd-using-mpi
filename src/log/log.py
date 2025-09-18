@@ -1,7 +1,9 @@
 import os
 from processing.mpi_utils import rank
 
-def log_test_rmse(epoch, batch_size, activation, learning_rate, train_rmse, test_rmse, logfile):
+def log_test_rmse(num_processes, epoch, batch_size, activation, learning_rate, 
+            train_rmse, test_rmse, train_time_max, train_time_avg, test_time_max, test_time_avg, 
+            total_time_max, total_time_avg, logfile):
     """
     Appends training metrics to a CSV file. Only rank 0 writes.
     """
@@ -13,13 +15,13 @@ def log_test_rmse(epoch, batch_size, activation, learning_rate, train_rmse, test
         # If file doesn't exist, then write the header, otherwise skip
         if not os.path.exists(logfile):
             with open(logfile, "w") as f:
-                f.write("epoch,batch_size,activation,learning_rate,train_rmse,test_rmse\n")
+                f.write("num_processes,epoch,batch_size,activation,learning_rate,train_rmse,test_rmse,train_time_max,train_time_avg,test_time_max,test_time_avg,total_time_max,total_time_avg\n")
 
         # Append new line
         with open(logfile, "a") as f:
-            f.write(f"{epoch},{batch_size},{activation},{learning_rate},{train_rmse:.6f},{test_rmse:.6f}\n")
+            f.write(f"{num_processes},{epoch},{batch_size},{activation},{learning_rate},{train_rmse:.6f},{test_rmse:.6f},{train_time_max:.6f},{train_time_avg:.6f},{test_time_max:.6f},{test_time_avg:.6f},{total_time_max:.6f},{total_time_avg:.6f}\n")
 
-def log_training_metrics(iteration, epoch, batch_size, activation, learning_rate, training_loss, logfile="../logs/normalization_fix/training_metrics.csv"):
+def log_training_metrics(iteration, epoch, batch_size, activation, learning_rate, num_processes, training_loss, logfile="../logs/normalization_fix/training_metrics.csv"):
     """
     Appends training metrics to a CSV file. Only rank 0 writes.
     """
@@ -36,6 +38,6 @@ def log_training_metrics(iteration, epoch, batch_size, activation, learning_rate
         with open(logfile, "a") as f:
             # If new file, write header first
             if not file_exists:
-                f.write("iteration,epoch,batch_size,activation,learning_rate,training_loss\n")
+                f.write("num_processes,iteration,epoch,batch_size,activation,learning_rate,training_loss\n")
             # Append new log line
-            f.write(f"{iteration},{epoch},{batch_size},{activation},{learning_rate},{training_loss:.6f}\n")
+            f.write(f"{num_processes},{iteration},{epoch},{batch_size},{activation},{learning_rate},{training_loss:.6f}\n")

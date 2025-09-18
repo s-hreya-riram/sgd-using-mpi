@@ -45,16 +45,15 @@ if __name__ == "__main__":
 
     # get user input for the following attributes:
     # file path, hidden layer dimensions, learning rate, activation function, epochs, batch size, seed
-
     if len(sys.argv) != 9:
-        print("Usage: python script.py <file_path> <test_ratio> <hidden_dimensions> <learning_rate> <activation_function> <epochs> <batch_size> <seed>")
+        print("Usage: python main.py <file_path> <test_ratio> <hidden_dimensions> <learning_rate> <activation_function> <epochs> <batch_size> <seed>")
         sys.exit(1)
 
     try:
         file_path = validateFilePath(sys.argv[1])
         test_ratio = validateFloatDecimals(sys.argv[2])
         hidden_dim = validatePositiveInteger(sys.argv[3])
-        lr = validateFloatDecimals(sys.argv[4])
+        learning_rate = validateFloatDecimals(sys.argv[4])
         activation = validateActivationFunction(sys.argv[5])
         epochs = validatePositiveInteger(sys.argv[6])
         batch_size = validatePositiveInteger(sys.argv[7])
@@ -69,16 +68,15 @@ if __name__ == "__main__":
         print(f"File: {file_path}")
         print(f"Test ratio for train-test split: {test_ratio}")
         print(f"Hidden dim: {hidden_dim}")
-        print(f"Learning rate: {lr}")
+        print(f"Learning rate: {learning_rate}")
         print(f"Activation: {activation}")
         print(f"Epochs: {epochs}")
         print(f"Batch size: {batch_size}")
         print(f"Seed: {seed}")
 
-    data_loader = DatasetLoader(file_path, test_ratio, seed, chunksize=100000)
-    X_train, y_train, X_test, y_test = data_loader.load_and_split()
+    dataset_loader = DatasetLoader(file_path, test_ratio, seed, chunksize=100000)
+    X_train, y_train, X_test, y_test = dataset_loader.load_and_split()
     print(f"[Rank {rank}] got {X_train.shape[0]} training samples, {X_test.shape[0]} testing samples, {X_train.shape[1]} features.")
-
 
     normalizer = Normalizer(FEATURE_COLUMNS, SKIP_NORMALIZATION_COLUMNS)
     X_train_normalized, y_train_normalized = normalizer.normalize(X_train, y_train)
@@ -86,11 +84,12 @@ if __name__ == "__main__":
     X_test_normalized, y_test_normalized = normalizer.normalize_test_data(X_test, y_test)
     print(f"[Rank {rank}] got {X_test_normalized.shape[0]} testing samples, {X_test_normalized.shape[1]} features.")
     
+    # adding a barrier to ensure all ranks start running the model together
     comm.Barrier()
     
     if rank == 0:
         print("Data distribution and normalization done, ready for SGD...")
     
     input_dim = X_train.shape[1]
-    model = NeuralNet(input_dim, hidden_dim, lr, activation, seed)
+    model = NeuralNet(input_dim, hidden_dim, learning_rate, activation, size, seed)
     execute_model(model, X_train_normalized, y_train_normalized, X_test_normalized, y_test_normalized, epochs, batch_size, seed)

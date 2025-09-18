@@ -16,4 +16,4 @@ def sigmoid_grad(z):
 def tanh(x): return np.tanh(x)
 def tanh_grad(z): return 1 - np.tanh(z) ** 2
 
-#TODO try using softmax function, if it has the same issue as sigmoid, we need approximations
+#TODO add more activation functions here and in the map in constants.py - softmax

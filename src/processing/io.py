@@ -34,8 +34,8 @@ class DatasetLoader:
         # Process with rank 0 broadcasts the row count to all processes
         num_rows_total = comm.bcast(n_rows, root=0)
 
-        # Partition rows across ranks almost equally (as num_rows_total may not be divisible by size)
-        rows_per_rank = num_rows_total // size
+        # Partition rows across ranks almost equally
+        rows_per_rank = int(np.ceil(num_rows_total / size))
         begin_index_local = rank * rows_per_rank
         end_index_local = (rank + 1) * rows_per_rank if rank < size - 1 else num_rows_total
         num_rows_local = end_index_local - begin_index_local
@@ -73,8 +73,8 @@ class DatasetLoader:
             print(f"[Rank {rank}] has split test-train data with {train_size} - {test_size} split")
 
         
-        # Although not the case with the current dataset as it has only 3% missing values,
-        # this else case is to handle the edge case of a process that gets no data after preprocessing
+        # Although not the case with the current dataset has no missing values,
+        # this else case is to handle the edge case of a process that gets no data
         else:
             X_train, X_test = np.empty((0, 0)), np.empty((0, 0))
             y_train, y_test = np.empty((0,)), np.empty((0,))
@@ -93,13 +93,13 @@ class DatasetLoader:
             return sum(1 for _ in f) - 1  # subtract header
 
     @staticmethod
-    def split_test_train(X, y, test_ratio, random_state):
+    def split_test_train(X, y, test_ratio, random_seed):
         '''
         Split the data into test and train sets given a test ratio and a random seed
-        Returns X_train, y_train, X_test, y_test in that order
+        Returns X_train, y_train, X_test, y_test, train_size, test_size
         '''
         # setting a random seed to make the shuffling deterministic
-        np.random.seed(random_state)
+        np.random.seed(random_seed)
 
         num_samples = X.shape[0]
         indices = np.arange(num_samples)

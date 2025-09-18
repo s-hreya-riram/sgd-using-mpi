@@ -2,6 +2,14 @@ import numpy as np
 from processing.mpi_utils import *
 
 class Normalizer:
+    """
+    Following the same process as Kernel Ridge Regression from Lecture 4,
+    calculating local sum/sq diff for each process and then using allreduce to get global sum/sqdiff.
+
+    Additionally this takes in the feature columns and any columns to be skipped from normalization
+    The reason for including this logic is to evaluate the test rmse with/without normalizing 
+    features that were frequency encoded and(or) are categorical
+    """
     def __init__(self, feature_columns, skip_normalization_columns):
         self.feature_columns = feature_columns
         self.skip_normalization_columns = skip_normalization_columns
@@ -13,9 +21,8 @@ class Normalizer:
         self.label_std = None
 
     def normalize(self, training_feature_local, training_label_local):
-        """Following the same process as professor did in Kernel Ridge Regression,
-        calculating local sum/sq diff and then using allreduce to get global sum/sqdiff."""
-        
+        '''calculate local sum/sq diff for each process and then using allreduce 
+        to get global sum/sqdiff to normalize the training feature and label vectors.'''
         # determine the indices of the columns to be normalized
         normalize_indices = self.get_normalize_indices(training_feature_local)
 
@@ -60,13 +67,13 @@ class Normalizer:
 
         if training_label_local.size > 0:
             std_nozero = self.label_std if self.label_std > 0 else 1.0
-            training_label_local = (training_label_local - self.label_mean) / std_nozero
+            training_label_local[:] = (training_label_local - self.label_mean) / std_nozero
 
         return training_feature_local, training_label_local
 
 
     def normalize_test_data(self, test_feature, test_label):
-        """Normalize the test data using the means and standard deviations from the training data."""
+        """Normalize the test data using the global means and standard deviations from the training data."""
         normalize_indices = self.get_normalize_indices(test_feature)
 
         test_feature_normalized = test_feature.copy()
@@ -77,12 +84,12 @@ class Normalizer:
         test_label_normalized = test_label.copy()
         if test_label.size:
             label_std_nozero = self.label_std if self.label_std > 0 else 1.0
-            test_label_normalized = (test_label - self.label_mean) / label_std_nozero
+            test_label_normalized[:] = (test_label - self.label_mean) / label_std_nozero
 
         return test_feature_normalized, test_label_normalized
 
     def get_normalize_indices(self, feature_matrix):
-        # calculating number of features
+        # get number of features
         n_feature = feature_matrix.shape[1] if feature_matrix.size else 0
 
         # determine the indices of the columns to be normalized
