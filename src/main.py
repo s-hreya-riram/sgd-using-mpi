@@ -1,4 +1,9 @@
 import os
+
+# Limiting the number of threads to control CPU utilization
+os.environ["OMP_NUM_THREADS"] = "4"
+os.environ["MKL_NUM_THREADS"] = "4"
+
 import sys
 import pandas as pd
 import numpy as np
@@ -90,6 +95,6 @@ if __name__ == "__main__":
     if rank == 0:
         print("Data distribution and normalization done, ready for SGD...")
     
-    input_dim = X_train.shape[1]
+    input_dim = len(FEATURE_COLUMNS) 
     model = NeuralNet(input_dim, hidden_dim, learning_rate, activation, size, seed)
     execute_model(model, X_train_normalized, y_train_normalized, X_test_normalized, y_test_normalized, epochs, batch_size, seed)
