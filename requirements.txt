@@ -1,4 +1,10 @@
-mpi4py
-pandas
-numpy
-scikit-learn
+# Core scientific stack
+numpy>=1.24,<2.0
+pandas>=2.0,<3.0
+scikit-learn>=1.3,<2.0
+
+# Dask (with dataframe + distributed)
+dask[dataframe,distributed]>=2023.5.0,<2024.0
+
+# MPI support
+mpi4py>=3.1,<4.0
