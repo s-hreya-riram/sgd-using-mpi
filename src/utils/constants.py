@@ -37,7 +37,9 @@ FEATURE_COLUMNS = (
 )
 
 SKIP_NORMALIZATION_COLUMNS = []
-#["PULocationID", "DOLocationID"] + EXPECTED_RATECODE_COLUMNS + EXPECTED_PAYMENT_COLUMNS
+# uncomment as necessary to skip normalization of categorical features
+#SKIP_NORMALIZATION_COLUMNS = ["PULocationID", "DOLocationID"] + EXPECTED_RATECODE_COLUMNS + EXPECTED_PAYMENT_COLUMNS
+
 LABEL_COLUMN = "total_amount"
 
 ACTIVATION_FUNCTION_MAP = {

@@ -57,7 +57,7 @@ class NeuralNet:
         return self.z2
 
     def backward(self, X, y, y_pred):
-        """Compute local gradients"""
+        """Compute local gradients with backward pass through 1 hidden layer"""
         logger.info(f"Rank {rank} performing backward pass")
         batch_size = X.shape[0]
         error = (y_pred - y.reshape(-1, 1))  # (batch_size,1)
@@ -89,6 +89,7 @@ def train_on_batch(model, X_local, y_local):
     Train on a local batch and return local SSE.
     - Always calls allreduce for gradients (even if batch is empty)
     - Handles weighted gradients for uneven batch sizes
+    - Returns local SSE for train RMSE calculation
     """
     num_local = X_local.shape[0]
 
@@ -97,10 +98,10 @@ def train_on_batch(model, X_local, y_local):
         y_pred_local = model.forward(X_local)
         local_gradients = model.backward(X_local, y_local, y_pred_local)
 
-        # Weight gradients by number of local samples
+        # Weight gradients by number of local samples as samples per rank may differ
         weighted_gradients = [g * num_local for g in local_gradients]
     else:
-        # -------- Safety: zero gradients for empty batches --------
+        # fallback for ranks with no data in batch
         y_pred_local = np.zeros((0, 1))
         weighted_gradients = [
             np.zeros_like(model.W1),
@@ -109,7 +110,7 @@ def train_on_batch(model, X_local, y_local):
             np.zeros_like(model.b2)
         ]
 
-    # -------- All ranks participate in allreduce --------
+    # Aggregate gradients across all processes
     summed_gradients = [comm.allreduce(g, op=MPI.SUM) for g in weighted_gradients]
     total_samples = comm.allreduce(num_local, op=MPI.SUM)
 
@@ -131,7 +132,7 @@ def train(model, X_train, y_train, epochs, batch_size, seed, stopping_criterion=
     Distributed SGD training loop with:
     - Random mini-batch sampling (with replacement, avoids empty batches)
     - Convergence-based stopping criterion (global loss delta < stopping_criterion)
-    - Still capped by 'epochs' as a maximum safeguard
+    - Still capped by epochs if the stopping criterion is not met
     """
     logger.debug(f"Rank {rank} starting training for {epochs} epochs with batch size {batch_size}")
 
@@ -148,7 +149,7 @@ def train(model, X_train, y_train, epochs, batch_size, seed, stopping_criterion=
 
         for batch_idx in range(num_batches):
             if X_train.shape[0] > 0:
-                # Randomly sample 'batch_size' rows with replacement
+                # Randomly sample batch_size rows with replacement
                 indices = np.random.choice(X_train.shape[0], batch_size, replace=True)
                 X_batch = X_train[indices]
                 y_batch = y_train[indices]
