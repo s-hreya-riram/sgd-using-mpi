@@ -87,9 +87,9 @@ class NeuralNet:
 def train_on_batch(model, X_local, y_local):
     """
     Train on a local batch and return local SSE.
-    - Always calls allreduce for gradients (even if batch is empty)
-    - Handles weighted gradients for uneven batch sizes
-    - Returns local SSE for train RMSE calculation
+    - Execute allreduce for gradients
+    - Handle weighted gradients for uneven batch sizes
+    - Return local SSE for train RMSE calculation
     """
     num_local = X_local.shape[0]
 
@@ -126,71 +126,60 @@ def train_on_batch(model, X_local, y_local):
     local_sse = float(np.sum((y_pred_local - y_local.reshape(-1, 1)) ** 2)) if num_local > 0 else 0.0
     return local_sse
 
-
-def train(model, X_train, y_train, epochs, batch_size, seed, stopping_criterion=1e-5):
+def train(model, X_train, y_train, max_iterations, batch_size, seed, stopping_criterion):
     """
     Distributed SGD training loop with:
-    - Random mini-batch sampling (with replacement, avoids empty batches)
+    - Random mini-batch sampling without replacement to prevent bias
     - Convergence-based stopping criterion (global loss delta < stopping_criterion)
-    - Still capped by epochs if the stopping criterion is not met
+    - Capped by max iterations if the stopping criterion is not met
     """
-    logger.debug(f"Rank {rank} starting training for {epochs} epochs with batch size {batch_size}")
+    logger.debug(f"Rank {rank} starting training with batch size {batch_size}")
 
     iteration = 0
     total_sse = 0.0
     total_count = 0
     previous_loss = None
+    rng = np.random.default_rng(seed + rank)
 
-    for epoch in range(epochs):
-        np.random.seed(seed + epoch + rank)
+    while iteration < max_iterations:
+        # Randomly sample batch
+        indices = rng.choice(X_train.shape[0], batch_size, replace=False)
+        X_batch = X_train[indices]
+        y_batch = y_train[indices]
 
-        # define number of mini-batches per epoch based on local data size
-        num_batches = max(1, (X_train.shape[0] + batch_size - 1) // batch_size)
+        # Train on this batch
+        local_sse = train_on_batch(model, X_batch, y_batch)
+        local_count = X_batch.shape[0]
 
-        for batch_idx in range(num_batches):
-            if X_train.shape[0] > 0:
-                # Randomly sample batch_size rows with replacement
-                indices = np.random.choice(X_train.shape[0], batch_size, replace=True)
-                X_batch = X_train[indices]
-                y_batch = y_train[indices]
-            else:
-                # Properly shaped empty arrays for ranks with no data
-                X_batch = np.empty((0, X_train.shape[1]))
-                y_batch = np.empty((0,))
+        # Update totals
+        total_sse += local_sse
+        total_count += local_count
+        iteration += 1
 
-            # Train on batch
-            local_sse = train_on_batch(model, X_batch, y_batch)
-            local_count = X_batch.shape[0]
+        # Compute global loss
+        global_sse = comm.allreduce(local_sse, op=MPI.SUM)
+        global_count = comm.allreduce(local_count, op=MPI.SUM)
+        current_loss = 0.5 * (global_sse / global_count) if global_count > 0 else 0.0
 
-            # Update totals for RMSE calculation
-            total_sse += local_sse
-            total_count += local_count
-            iteration += 1
+        # Log metrics
+        if rank == 0:
+            log_training_metrics(iteration, batch_size,
+                                 model.activation_fn, model.learning_rate,
+                                 model.num_processes, current_loss)
+            logger.debug(f"Iteration {iteration}, loss={current_loss:.6f}")
 
-            # Compute global loss for convergence check
-            global_sse = comm.allreduce(local_sse, op=MPI.SUM)
-            global_count = comm.allreduce(local_count, op=MPI.SUM)
-            current_loss = 0.5 * (global_sse / global_count) if global_count > 0 else 0.0
-
-            # Check convergence
-            if previous_loss is not None and abs(previous_loss - current_loss) < stopping_criterion:
-                if rank == 0:
-                    logger.info(f"Converged at iteration {iteration}, loss={current_loss:.6f}")
-                # Return RMSE based on global sums
-                return np.sqrt(global_sse / global_count) if global_count > 0 else 0.0
-
-            previous_loss = current_loss
-
-            # Log only Rank 0 local batch loss
+        # Check convergence
+        if previous_loss is not None and abs(previous_loss - current_loss) / previous_loss < stopping_criterion:
             if rank == 0:
-                log_training_metrics(
-                    iteration, epoch + 1, batch_size,
-                    model.activation_fn, model.learning_rate,
-                    model.num_processes, current_loss
-                )
+                logger.info(f"Converged at iteration {iteration}, loss={current_loss:.6f}")
+            return np.sqrt(global_sse / global_count) if global_count > 0 else 0.0, iteration
 
-    logger.debug(f"Rank {rank} completed training")
-    return np.sqrt(total_sse / total_count) if total_count > 0 else 0.0
+        previous_loss = current_loss
+
+    # Final RMSE
+    global_sse = comm.allreduce(total_sse, op=MPI.SUM)
+    global_count = comm.allreduce(total_count, op=MPI.SUM)
+    return np.sqrt(global_sse / global_count) if global_count > 0 else 0.0, iteration
 
 
 def evaluate(model, X_test, y_test):
@@ -211,10 +200,11 @@ def evaluate(model, X_test, y_test):
 
 
 def execute_model(model, X_train, y_train, X_test, y_test,
-                  epochs, batch_size, seed):
+                  max_iterations, batch_size, seed):
     """
     Executes distributed training + evaluation with timing and logging.
     """
+    stopping_criterion = 1e-5
     logger.debug(f"Rank {rank} executing model training and evaluation")
     comm.Barrier()
 
@@ -222,8 +212,7 @@ def execute_model(model, X_train, y_train, X_test, y_test,
     train_start = MPI.Wtime()
 
     # Train the model and get the training RMSE for comparison
-    stopping_criterion = model.learning_rate * 0.1
-    train_rmse = train(model, X_train, y_train, epochs, batch_size, seed, stopping_criterion)
+    train_rmse, num_iterations = train(model, X_train, y_train, max_iterations, batch_size, seed, stopping_criterion)
 
     train_end = MPI.Wtime()
     eval_start = MPI.Wtime()
@@ -251,13 +240,14 @@ def execute_model(model, X_train, y_train, X_test, y_test,
     # Log only from rank 0
     if rank == 0:
         log_test_rmse(
-            model.num_processes, epochs, batch_size,
+            model.num_processes, num_iterations, 
+            max_iterations, batch_size,
             model.activation_fn, model.learning_rate,
             train_rmse, test_rmse,
             train_time_max, train_time_avg,
             eval_time_max, eval_time_avg,
             total_time_max, total_time_avg,
-            logfile="../logs/normalization_fix/train_test_rmse.csv"
+            logfile="../logs/normalization_fix/new/train_test_rmse.csv"
         )
         logger.info(f"[Final Results] Train RMSE: {train_rmse:.4f} | Test RMSE: {test_rmse:.4f}")
         logger.info(f"[Timing Summary] "

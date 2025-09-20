@@ -57,9 +57,9 @@ def validateActivationFunction(value):
 if __name__ == "__main__":
 
     # get user input for the following attributes:
-    # file path, hidden layer dimensions, learning rate, activation function, epochs, batch size, seed
+    # file path, hidden layer dimensions, learning rate, activation function, max iterations, batch size, seed
     if len(sys.argv) != 9:
-        print("Usage: python main.py <file_path> <test_ratio> <hidden_dimensions> <learning_rate> <activation_function> <epochs> <batch_size> <seed>")
+        print("Usage: python main.py <file_path> <test_ratio> <hidden_dimensions> <learning_rate> <activation_function> <max_iterations> <batch_size> <seed>")
         sys.exit(1)
 
     try:
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         hidden_dim = validatePositiveInteger(sys.argv[3])
         learning_rate = validateFloatDecimals(sys.argv[4])
         activation = validateActivationFunction(sys.argv[5])
-        epochs = validatePositiveInteger(sys.argv[6])
+        max_iterations = validatePositiveInteger(sys.argv[6])
         batch_size = validatePositiveInteger(sys.argv[7])
         seed = validatePositiveInteger(sys.argv[8])
     except ValueError as e:
@@ -83,7 +83,7 @@ if __name__ == "__main__":
         print(f"Hidden dim: {hidden_dim}")
         print(f"Learning rate: {learning_rate}")
         print(f"Activation: {activation}")
-        print(f"Epochs: {epochs}")
+        print(f"Max iterations: {max_iterations}")
         print(f"Batch size: {batch_size}")
         print(f"Seed: {seed}")
 
@@ -105,4 +105,4 @@ if __name__ == "__main__":
     
     input_dim = len(FEATURE_COLUMNS) 
     model = NeuralNet(input_dim, hidden_dim, learning_rate, activation, size, seed)
-    execute_model(model, X_train_normalized, y_train_normalized, X_test_normalized, y_test_normalized, epochs, batch_size, seed)
+    execute_model(model, X_train_normalized, y_train_normalized, X_test_normalized, y_test_normalized, max_iterations, batch_size, seed)

@@ -1,3 +1,0 @@
-num_processes,epoch,batch_size,activation,learning_rate,train_rmse,test_rmse,train_time_max,train_time_avg,test_time_max,test_time_avg,total_time_max,total_time_avg
-4,10,1024,relu,0.001,0.514955,1.645909,485.477094,485.455283,3.837946,3.819534,489.275041,489.274820
-4,50,128,relu,0.0001,0.532022,1.633800,3632.581709,3632.576183,5.629722,5.627993,3638.205092,3638.204290
