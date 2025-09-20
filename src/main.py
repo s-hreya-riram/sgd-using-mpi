@@ -1,8 +1,11 @@
 import os
 
 # Limiting the number of threads to control CPU utilization
-os.environ["OMP_NUM_THREADS"] = "4"
-os.environ["MKL_NUM_THREADS"] = "4"
+# os.environ["OMP_NUM_THREADS"] = "4"
+# os.environ["MKL_NUM_THREADS"] = "4"
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
 
 import sys
 import pandas as pd
@@ -13,6 +16,8 @@ from neural_net import *
 from processing.io import DatasetLoader
 from processing.normalize import Normalizer
 from utils.constants import FEATURE_COLUMNS, SKIP_NORMALIZATION_COLUMNS
+import logging
+
 
 # Suppressing the timestamp parsing warning from pandas to keep the terminal logs clean
 warnings.filterwarnings(
@@ -21,6 +26,9 @@ warnings.filterwarnings(
 )
 #ignore dtype warning for mixed types in columns inside the chunks to keep the terminal logs clean
 warnings.simplefilter(action="ignore", category=pd.errors.DtypeWarning)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Validation functions for user inputs
 def validateFilePath(file_path):
@@ -81,19 +89,19 @@ if __name__ == "__main__":
 
     dataset_loader = DatasetLoader(file_path, test_ratio, seed, chunksize=100000)
     X_train, y_train, X_test, y_test = dataset_loader.load_and_split()
-    print(f"[Rank {rank}] got {X_train.shape[0]} training samples, {X_test.shape[0]} testing samples, {X_train.shape[1]} features.")
+    logger.info(f"[Rank {rank}] got {X_train.shape[0]} training samples, {X_test.shape[0]} testing samples, {X_train.shape[1]} features.")
 
     normalizer = Normalizer(FEATURE_COLUMNS, SKIP_NORMALIZATION_COLUMNS)
     X_train_normalized, y_train_normalized = normalizer.normalize(X_train, y_train)
-    print(f"[Rank {rank}] got {X_train_normalized.shape[0]} training samples, {X_train_normalized.shape[1]} features.")
+    logger.info(f"[Rank {rank}] got {X_train_normalized.shape[0]} training samples, {X_train_normalized.shape[1]} features.")
     X_test_normalized, y_test_normalized = normalizer.normalize_test_data(X_test, y_test)
-    print(f"[Rank {rank}] got {X_test_normalized.shape[0]} testing samples, {X_test_normalized.shape[1]} features.")
-    
+    logger.info(f"[Rank {rank}] got {X_test_normalized.shape[0]} testing samples, {X_test_normalized.shape[1]} features.")
+
     # adding a barrier to ensure all ranks start running the model together
     comm.Barrier()
     
     if rank == 0:
-        print("Data distribution and normalization done, ready for SGD...")
+        logger.info("Data distribution and normalization done, ready for SGD...")
     
     input_dim = len(FEATURE_COLUMNS) 
     model = NeuralNet(input_dim, hidden_dim, learning_rate, activation, size, seed)
