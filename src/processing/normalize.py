@@ -31,12 +31,13 @@ class Normalizer:
         logger.info(f"Starting normalization of training data for rank {rank}")
         # determine the indices of the columns to be normalized
         normalize_indices = self.get_normalize_indices(X_train_local)
+        num_features = len(normalize_indices)
 
         # feature normalization
         if X_train_local.size:
             local_feature_sum = np.sum(X_train_local[:, normalize_indices], axis=0)
         else:
-            local_feature_sum = np.zeros(len(normalize_indices))
+            local_feature_sum = np.zeros(num_features, dtype=float)
 
         global_feature_sum = comm.allreduce(local_feature_sum, op=MPI.SUM)
 
@@ -48,7 +49,7 @@ class Normalizer:
         if X_train_local.size:
             local_sqdiff = np.sum((X_train_local[:, normalize_indices] - self.x_train_mean) ** 2, axis=0)
         else:
-            local_sqdiff = np.zeros(len(normalize_indices))
+            local_sqdiff = np.zeros(num_features, dtype=float) 
 
         global_sqdiff = comm.allreduce(local_sqdiff, op=MPI.SUM)
         self.x_train_std = np.sqrt(global_sqdiff / global_feature_count) if global_feature_count > 0 else np.ones_like(global_sqdiff)

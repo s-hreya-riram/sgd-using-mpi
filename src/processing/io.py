@@ -106,15 +106,19 @@ class DatasetLoader:
         np.random.seed(random_seed)
 
         num_samples = X.shape[0]
-        indices = np.arange(num_samples)
 
+        if num_samples == 0:
+            return np.empty((0, X.shape[1])), np.empty((0,)), np.empty((0, X.shape[1])), np.empty((0,)), 0, 0
+        
+        indices = np.arange(num_samples)
         np.random.shuffle(indices)
 
-        test_size = int(num_samples * test_ratio)
+        test_size = max(1, int(num_samples * test_ratio)) if num_samples > 0 else 0
+        train_size = max(1, num_samples - test_size) if num_samples > 0 else 0
         test_indices = indices[:test_size]
         train_indices = indices[test_size:]
 
         X_train, y_train = X[train_indices], y[train_indices]
         X_test, y_test = X[test_indices], y[test_indices]
 
-        return X_train, y_train, X_test, y_test, (num_samples - test_size), test_size
+        return X_train, y_train, X_test, y_test, train_size, test_size
