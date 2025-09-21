@@ -14,10 +14,13 @@ class Normalizer:
     The reason for including this logic is to evaluate the test rmse with/without normalizing 
     features that were frequency encoded and(or) are categorical
     """
-    def __init__(self, feature_columns, skip_normalization_columns):
+    def __init__(self, feature_columns, skip_normalization_columns, debug=False):
         logger.info("Starting Normalizer")
         self.feature_columns = feature_columns
         self.skip_normalization_columns = skip_normalization_columns
+        self.debug = debug
+        if self.debug:
+            logger.setLevel(logging.DEBUG)
 
         # attributes after normalizing train data that will be used for normalizing test data
         self.x_train_mean = None

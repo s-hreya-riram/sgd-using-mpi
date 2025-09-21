@@ -54,12 +54,17 @@ def validateActivationFunction(value):
         raise ValueError(f"Activation function must be one of {valid_functions}")
     return value
 
+def validateYesNoInput(value):
+    if value not in ['y', 'n']:
+        raise ValueError("Input must be 'y' or 'n'")
+    return value == 'y'
+
 if __name__ == "__main__":
 
     # get user input for the following attributes:
     # file path, hidden layer dimensions, learning rate, activation function, max iterations, batch size, seed
-    if len(sys.argv) != 9:
-        print("Usage: python main.py <file_path> <test_ratio> <hidden_dimensions> <learning_rate> <activation_function> <max_iterations> <batch_size> <seed>")
+    if len(sys.argv) != 10:
+        print("Usage: python main.py <file_path> <test_ratio> <hidden_dimensions> <learning_rate> <activation_function> <max_iterations> <batch_size> <seed> <debug (y/n)")
         sys.exit(1)
 
     try:
@@ -71,27 +76,31 @@ if __name__ == "__main__":
         max_iterations = validatePositiveInteger(sys.argv[6])
         batch_size = validatePositiveInteger(sys.argv[7])
         seed = validatePositiveInteger(sys.argv[8])
+        debug_mode = validateYesNoInput(sys.argv[9].lower())
+        if debug_mode:
+            logger.setLevel(logging.DEBUG) 
+
     except ValueError as e:
-        print(f"Input error: {e}")
+        logger.error(f"Input error: {e}")
         sys.exit(1)
 
     # Print out user inputs back
     if rank == 0:
-        print("User inputs:")
-        print(f"File: {file_path}")
-        print(f"Test ratio for train-test split: {test_ratio}")
-        print(f"Hidden dim: {hidden_dim}")
-        print(f"Base learning rate: {learning_rate}")
-        print(f"Activation: {activation}")
-        print(f"Max iterations: {max_iterations}")
-        print(f"Batch size: {batch_size}")
-        print(f"Seed: {seed}")
+        logger.info("User inputs:")
+        logger.info(f"File: {file_path}")
+        logger.info(f"Test ratio for train-test split: {test_ratio}")
+        logger.info(f"Hidden dim: {hidden_dim}")
+        logger.info(f"Base learning rate: {learning_rate}")
+        logger.info(f"Activation: {activation}")
+        logger.info(f"Max iterations: {max_iterations}")
+        logger.info(f"Batch size: {batch_size}")
+        logger.info(f"Seed: {seed}")
 
-    dataset_loader = DatasetLoader(file_path, test_ratio, seed, chunksize=100000)
+    dataset_loader = DatasetLoader(file_path, test_ratio, seed, debug=debug_mode, chunksize=100000)
     X_train, y_train, X_test, y_test = dataset_loader.load_and_split()
     logger.info(f"[Rank {rank}] got {X_train.shape[0]} training samples, {X_test.shape[0]} testing samples, {X_train.shape[1]} features.")
 
-    normalizer = Normalizer(FEATURE_COLUMNS, SKIP_NORMALIZATION_COLUMNS)
+    normalizer = Normalizer(FEATURE_COLUMNS, SKIP_NORMALIZATION_COLUMNS, debug=debug_mode)
     X_train_normalized, y_train_normalized = normalizer.normalize(X_train, y_train)
     logger.info(f"[Rank {rank}] got {X_train_normalized.shape[0]} training samples, {X_train_normalized.shape[1]} features.")
     X_test_normalized, y_test_normalized = normalizer.normalize_test_data(X_test, y_test)
@@ -104,5 +113,5 @@ if __name__ == "__main__":
         logger.info("Data distribution and normalization done, ready for SGD...")
     
     input_dim = len(FEATURE_COLUMNS) 
-    model = NeuralNet(input_dim, hidden_dim, learning_rate, activation, size, seed)
+    model = NeuralNet(input_dim, hidden_dim, learning_rate, activation, size, seed, debug=debug_mode)
     execute_model(model, X_train_normalized, y_train_normalized, X_test_normalized, y_test_normalized, max_iterations, batch_size, seed)

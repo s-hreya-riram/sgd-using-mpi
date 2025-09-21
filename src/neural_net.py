@@ -9,7 +9,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)  # Set to DEBUG for detailed internal state logs
+logger.setLevel(logging.DEBUG)
 
 class NeuralNet:
     """
@@ -19,13 +19,17 @@ class NeuralNet:
     We initialize the starting weights based on the activation function to ensure faster
     convergence following https://www.deeplearning.ai/ai-notes/initialization/index.html
     """
-    def __init__(self, input_dim, hidden_dim, learning_rate, activation_fn, num_processes, seed):
+    def __init__(self, input_dim, hidden_dim, learning_rate, activation_fn, num_processes, seed, debug=False):
         logger.info(f"Rank {rank} initializing NeuralNet...")
         # randomly initialize weights by rank
         rng = np.random.default_rng(seed + rank)
         self.learning_rate = learning_rate
         self.activation_fn = activation_fn
         self.num_processes = num_processes
+        self.debug = debug
+
+        if self.debug:
+            logger.setLevel(logging.DEBUG)
 
         # initialize weights based on activation function
         # w1 and b1 are weights and biases for the hidden layer
@@ -142,66 +146,65 @@ def train_on_batch(model, X_local, y_local):
 
 def train(model, X_train, y_train, max_iterations, batch_size, seed, stopping_criterion):
     """
-    Distributed SGD training loop with:
-    - Random mini-batch sampling without replacement to prevent bias
-    - Convergence-based stopping criterion (global loss delta < stopping_criterion)
-    - Capped by max iterations if the stopping criterion is not met
+    Distributed SGD training loop using mini-batch approximation for convergence.
+    - Each iteration computes gradients using a batch of randomly selected samples.
+    - Convergence is checked using batch-level loss.
+    - Final RMSE is computed on the full training set.
     """
-    logger.debug(f"Rank {rank} starting training with batch size {batch_size}")
-
-    iteration = 0
-    total_sse = 0.0
-    total_count = 0
-    previous_loss = None
     rng = np.random.default_rng(seed + rank)
-    # to begin with we use the user-specified learning rate as base_lr
+    iteration = 0
+    previous_loss = None
     base_lr = model.learning_rate
 
     while iteration < max_iterations:
-        # Randomly sample batch
+        # Sample M indices for this iteration (mini-batch)
         indices = rng.choice(X_train.shape[0], batch_size, replace=False)
         X_batch = X_train[indices]
         y_batch = y_train[indices]
 
-        # Update learning rate using cyclical schedule
-        # setting step size based on batch size to lower training time
-        step_size = 1000 if batch_size >= 256 else 2000 if batch_size >= 128 else 3000
-        model.learning_rate = cyclical_lr(iteration, step_size= step_size, base_lr=base_lr)
+        # Update learning rate using a cyclic scheduler
+        # defining step sizes based on batch size to reduce training time
+        if batch_size >= 256:
+            step_size = 1000
+        elif batch_size >= 128:
+            step_size = 2000
+        else:
+            step_size = 2500
+        model.learning_rate = cyclical_lr(iteration, step_size=step_size, base_lr=base_lr)
 
-        # Train on this batch
+        # Train on batch and get batch SSE
         local_sse = train_on_batch(model, X_batch, y_batch)
         local_count = X_batch.shape[0]
 
-        # Update totals
-        total_sse += local_sse
-        total_count += local_count
-        iteration += 1
-
-        # Compute global loss
+        # Compute batch-level global loss for convergence
         global_sse = comm.allreduce(local_sse, op=MPI.SUM)
         global_count = comm.allreduce(local_count, op=MPI.SUM)
         current_loss = 0.5 * (global_sse / global_count) if global_count > 0 else 0.0
 
-        # Log metrics
+        # Logging
         if rank == 0:
             log_training_metrics(iteration, batch_size,
                                  model.activation_fn, model.learning_rate,
                                  model.num_processes, current_loss)
-            logger.debug(f"Iteration {iteration}, loss={current_loss:.6f}")
+            logger.debug(f"Iteration {iteration}, batch-loss={current_loss:.6f}")
 
-        # Check convergence
+        # Check convergence using batch-level loss
         if previous_loss is not None and abs(previous_loss - current_loss) / previous_loss < stopping_criterion:
             if rank == 0:
-                logger.info(f"Converged at iteration {iteration}, loss={current_loss:.6f}")
-            return np.sqrt(global_sse / global_count) if global_count > 0 else 0.0, iteration
+                logger.info(f"Converged at iteration {iteration}, batch-loss={current_loss:.6f}")
+            break
 
         previous_loss = current_loss
+        iteration += 1
 
-    # Final RMSE
-    global_sse = comm.allreduce(total_sse, op=MPI.SUM)
-    global_count = comm.allreduce(total_count, op=MPI.SUM)
-    return np.sqrt(global_sse / global_count) if global_count > 0 else 0.0, iteration
+    # Compute final RMSE on the full training set
+    y_pred_full = model.forward(X_train)
+    local_sse_full = np.sum((y_pred_full - y_train.reshape(-1, 1)) ** 2)
+    global_sse_full = comm.allreduce(local_sse_full, op=MPI.SUM)
+    global_count_full = comm.allreduce(X_train.shape[0], op=MPI.SUM)
+    train_rmse = np.sqrt(global_sse_full / global_count_full)
 
+    return train_rmse, iteration
 
 def evaluate(model, X_test, y_test):
     """Execute evaluation on the test set and return RMSE."""

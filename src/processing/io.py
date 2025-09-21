@@ -6,14 +6,17 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)  # DEBUG for detailed logs
 
 class DatasetLoader:
-    def __init__(self, file, test_ratio, seed, chunksize):
+    def __init__(self, file, test_ratio, seed, debug, chunksize):
         self.file = file
         self.test_ratio = test_ratio
         self.seed = seed
+        self.debug = debug
         self.chunksize = chunksize
+
+        if self.debug:
+            logger.setLevel(logging.DEBUG)
 
     def load_and_split(self):
         return self._read_data()
@@ -24,7 +27,7 @@ class DatasetLoader:
         Splits data into test and train sets after preprocessing.
         Returns concatenated X_train, y_train, X_test, y_test for that rank.
         """
-        logger.debug(f"[Rank {rank}] starting to read data from {self.file}")
+        logger.info(f"[Rank {rank}] starting to read data from {self.file}")
         
         # Only process with rank 0 counts rows
         if rank == 0:
@@ -40,7 +43,7 @@ class DatasetLoader:
         begin_index_local = rank * rows_per_rank
         end_index_local = (rank + 1) * rows_per_rank if rank < size - 1 else num_rows_total
         num_rows_local = end_index_local - begin_index_local
-        logger.debug(f"[Rank {rank}] got {num_rows_local} rows (rows {begin_index_local}–{end_index_local-1})")
+        logger.info(f"[Rank {rank}] got {num_rows_local} rows (rows {begin_index_local}–{end_index_local-1})")
 
         # Skip rows before this rank’s slice
         skip = range(1, begin_index_local + 1) if rank > 0 else None
