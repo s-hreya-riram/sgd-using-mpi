@@ -47,4 +47,6 @@ ACTIVATION_FUNCTION_MAP = {
     "relu": (relu, relu_grad),
     "sigmoid": (sigmoid, sigmoid_grad),
     "tanh": (tanh, tanh_grad),
+    "leaky_relu": (leaky_relu, leaky_relu_grad),
+    "elu": (elu, elu_grad)
 }

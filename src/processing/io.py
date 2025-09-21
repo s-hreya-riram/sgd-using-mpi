@@ -58,7 +58,12 @@ class DatasetLoader:
             low_memory=True,
         )
 
+        rows_read = 0
+
         for chunk in reader:
+
+            rows_read += len(chunk)
+
             X = chunk[FEATURE_COLUMNS].to_numpy()
             y = chunk[LABEL_COLUMN].to_numpy()
 
@@ -66,16 +71,22 @@ class DatasetLoader:
                 X_train_chunk, y_train_chunk, X_test_chunk, y_test_chunk, train_size_chunk, test_size_chunk = \
                     DatasetLoader.split_test_train(X, y, self.test_ratio, self.seed)
 
-                X_train_chunks.append(X_train_chunk)
-                y_train_chunks.append(y_train_chunk)
-                X_test_chunks.append(X_test_chunk)
-                y_test_chunks.append(y_test_chunk)
+                if X_train_chunk.size > 0:
+                    X_train_chunks.append(X_train_chunk)
+                    y_train_chunks.append(y_train_chunk)
+
+                if X_test_chunk.size > 0:
+                    X_test_chunks.append(X_test_chunk)
+                    y_test_chunks.append(y_test_chunk)
 
                 total_train += train_size_chunk
                 total_test += test_size_chunk
 
+        if rows_read == 0:
+            logger.warning(f"[Rank {rank}] read 0 rows despite being assigned {num_rows_local} rows from {begin_index_local} to {end_index_local-1}")
+
         # Concatenate all splits from chunks
-        if X_train_chunks:
+        if X_train_chunks and X_test_chunks:
             X_local = np.vstack(X_train_chunks)
             y_local = np.concatenate(y_train_chunks)
             X_test_local = np.vstack(X_test_chunks)
@@ -103,18 +114,25 @@ class DatasetLoader:
     def split_test_train(X, y, test_ratio, random_seed):
         """Split the data into test and train sets given a test ratio and random seed."""
         logger.debug(f"Rank {rank} splitting data with test ratio {test_ratio}")
-        np.random.seed(random_seed)
+        rng = np.random.default_rng(random_seed)
 
         num_samples = X.shape[0]
 
         if num_samples == 0:
             return np.empty((0, X.shape[1])), np.empty((0,)), np.empty((0, X.shape[1])), np.empty((0,)), 0, 0
-        
-        indices = np.arange(num_samples)
-        np.random.shuffle(indices)
+ 
+        if num_samples == 1: 
+            if test_ratio >= 0.5:
+                return (np.empty((0, X.shape[1])), np.empty((0,)), X.copy(), y.copy(), 0, 1)
+            else:
+                return (X.copy(), y.copy(), np.empty((0, X.shape[1])), np.empty((0,)), 1, 0)
 
-        test_size = max(1, int(num_samples * test_ratio)) if num_samples > 0 else 0
-        train_size = max(1, num_samples - test_size) if num_samples > 0 else 0
+ 
+        indices = rng.permutation(num_samples)
+
+        test_size = int(np.round(num_samples * test_ratio))
+        train_size = num_samples - test_size
+
         test_indices = indices[:test_size]
         train_indices = indices[test_size:]
 

@@ -22,7 +22,7 @@ class NeuralNet:
     def __init__(self, input_dim, hidden_dim, learning_rate, activation_fn, num_processes, seed):
         logger.info(f"Rank {rank} initializing NeuralNet...")
         # randomly initialize weights by rank
-        np.random.seed(seed + rank)
+        rng = np.random.default_rng(seed + rank)
         self.learning_rate = learning_rate
         self.activation_fn = activation_fn
         self.num_processes = num_processes
@@ -32,12 +32,12 @@ class NeuralNet:
         # w2 and b2 are weights and biases for the output layer
         if activation_fn == "relu":
             # He initialization (good for ReLU)
-            self.W1 = np.random.randn(input_dim, hidden_dim) * np.sqrt(2.0 / input_dim)
-            self.W2 = np.random.randn(hidden_dim, 1) * np.sqrt(2.0 / hidden_dim)
+            self.W1 = rng.standard_normal((input_dim, hidden_dim)) * np.sqrt(2.0 / input_dim)
+            self.W2 = rng.standard_normal((hidden_dim, 1)) * np.sqrt(2.0 / hidden_dim)
         else:
             # default to Xavier initialization if not ReLu i.e. linear, sigmoid, tanh
-            self.W1 = np.random.randn(input_dim, hidden_dim) / np.sqrt(input_dim)
-            self.W2 = np.random.randn(hidden_dim, 1) / np.sqrt(hidden_dim)
+            self.W1 = rng.standard_normal((input_dim, hidden_dim)) / np.sqrt(input_dim)
+            self.W2 = rng.standard_normal((hidden_dim, 1)) / np.sqrt(hidden_dim)
         self.b1 = np.zeros((1, hidden_dim))
         self.b2 = np.zeros((1, 1))
         # Broadcast initial weights from rank 0 to all other ranks
@@ -83,6 +83,20 @@ class NeuralNet:
         self.b1 -= self.learning_rate * db1
         self.W2 -= self.learning_rate * dW2
         self.b2 -= self.learning_rate * db2
+
+def cyclical_lr(iteration, base_lr=1e-5, step_size=500, max_lr=2e-4):
+    """
+    Triangular cyclical learning rate:
+    - base_lr: minimum LR
+    - max_lr: maximum LR
+    - step_size: number of iterations to reach max_lr from base_lr
+
+    The LR cycles between base_lr and max_lr indefinitely.
+    """
+    cycle = np.floor(1 + iteration / (2 * step_size))
+    x = np.abs(iteration / step_size - 2 * cycle + 1)
+    return base_lr + (max_lr - base_lr) * np.maximum(0, 1 - x)
+
 
 def train_on_batch(model, X_local, y_local):
     """
@@ -140,12 +154,19 @@ def train(model, X_train, y_train, max_iterations, batch_size, seed, stopping_cr
     total_count = 0
     previous_loss = None
     rng = np.random.default_rng(seed + rank)
+    # to begin with we use the user-specified learning rate as base_lr
+    base_lr = model.learning_rate
 
     while iteration < max_iterations:
         # Randomly sample batch
         indices = rng.choice(X_train.shape[0], batch_size, replace=False)
         X_batch = X_train[indices]
         y_batch = y_train[indices]
+
+        # Update learning rate using cyclical schedule
+        # setting step size based on batch size to lower training time
+        step_size = 1000 if batch_size >= 256 else 2000 if batch_size >= 128 else 3000
+        model.learning_rate = cyclical_lr(iteration, step_size= step_size, base_lr=base_lr)
 
         # Train on this batch
         local_sse = train_on_batch(model, X_batch, y_batch)

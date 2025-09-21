@@ -81,7 +81,7 @@ if __name__ == "__main__":
         print(f"File: {file_path}")
         print(f"Test ratio for train-test split: {test_ratio}")
         print(f"Hidden dim: {hidden_dim}")
-        print(f"Learning rate: {learning_rate}")
+        print(f"Base learning rate: {learning_rate}")
         print(f"Activation: {activation}")
         print(f"Max iterations: {max_iterations}")
         print(f"Batch size: {batch_size}")

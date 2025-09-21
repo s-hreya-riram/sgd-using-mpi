@@ -39,10 +39,10 @@ class Normalizer:
         else:
             local_feature_sum = np.zeros(num_features, dtype=float)
 
-        global_feature_sum = comm.allreduce(local_feature_sum, op=MPI.SUM)
-
         local_feature_count = X_train_local.shape[0]
-        global_feature_count = comm.allreduce(local_feature_count, op=MPI.SUM)
+
+        feature_fields = comm.allreduce((local_feature_sum, local_feature_count), op=MPI.SUM)
+        global_feature_sum, global_feature_count = feature_fields[0], feature_fields[1]
 
         self.x_train_mean = global_feature_sum / global_feature_count if global_feature_count > 0 else np.zeros_like(global_feature_sum)
 
@@ -51,7 +51,8 @@ class Normalizer:
         else:
             local_sqdiff = np.zeros(num_features, dtype=float) 
 
-        global_sqdiff = comm.allreduce(local_sqdiff, op=MPI.SUM)
+        global_sqdiff = comm.allreduce(np.float64(local_sqdiff), op=MPI.SUM)
+
         self.x_train_std = np.sqrt(global_sqdiff / global_feature_count) if global_feature_count > 0 else np.ones_like(global_sqdiff)
 
         # normalize in place, only for normalize_indices
@@ -60,16 +61,18 @@ class Normalizer:
             X_train_local[:, normalize_indices] = (X_train_local[:, normalize_indices] - self.x_train_mean) / x_train_std_nozero
 
         # label normalization
-        local_label_sum = float(np.sum(y_train_local)) if y_train_local.size else 0.0
-        global_label_sum = comm.allreduce(local_label_sum, op=MPI.SUM)
 
+        local_label_sum = float(np.sum(y_train_local)) if y_train_local.size else 0.0
         local_label_count = y_train_local.shape[0]
-        global_label_count = comm.allreduce(local_label_count, op=MPI.SUM)
+
+        label_fields =  comm.allreduce((local_label_sum, local_label_count), op=MPI.SUM)
+        global_label_sum, global_label_count = label_fields[0], label_fields[1]
 
         self.y_train_mean = global_label_sum / global_label_count if global_label_count > 0 else 0.0
 
         local_sqdiff = float(np.sum((y_train_local - self.y_train_mean) ** 2)) if y_train_local.size else 0.0
-        global_sqdiff = comm.allreduce(local_sqdiff, op=MPI.SUM)
+        global_sqdiff = comm.allreduce(np.float64(local_sqdiff), op=MPI.SUM)
+
         self.y_train_std = np.sqrt(global_sqdiff / global_label_count) if global_label_count > 0 else 1.0
 
         if y_train_local.size > 0:

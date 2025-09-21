@@ -16,4 +16,16 @@ def sigmoid_grad(z):
 def tanh(x): return np.tanh(x)
 def tanh_grad(z): return 1 - np.tanh(z) ** 2
 
-#TODO add more activation functions here and in the map in constants.py - softmax
+def leaky_relu(x, alpha=0.01):
+    return np.where(x > 0, x, alpha * x)
+def leaky_relu_grad(z, alpha=0.01):
+    dz = np.ones_like(z)
+    dz[z < 0] = alpha
+    return dz
+
+def elu(x, alpha=1.0):
+    return np.where(x > 0, x, alpha * (np.exp(x) - 1))
+def elu_grad(z, alpha=1.0):
+    dz = np.ones_like(z)
+    dz[z < 0] = elu(z[z < 0], alpha) + alpha
+    return dz
