@@ -37,7 +37,7 @@ $$
 The random set <img src="readme_images/distinct_integer_set.png" width="100"> must be updated for every iteration (1). The iteration terminates when $R\left(\theta_{k}\right)$ no longer decreases.
 
 ## Dataset
-The dataset we want to execute the solution to the problem statement is nytaxi2022.csv which has $39656098$ rows and $19$ attributes. The attributes of which are described as below (source: [Kaggle](https://www.kaggle.com/datasets/diishasiing/revenue-for-cab-drivers) :
+The dataset we want to execute the solution to the problem statement is nytaxi2022.csv which has $39656098$ rows and $19$ attributes. The attributes of which are described as below (source: [Kaggle](https://www.kaggle.com/datasets/diishasiing/revenue-for-cab-drivers)) :
 - VendorID: A unique identifier for the taxi vendor or service provider.
 - tpep_pickup_datetime: The date and time when the passenger was picked up.
 - ttpep_dropoff_datetime: The date and time when the passenger was dropped off.
@@ -77,7 +77,8 @@ Since the given dataset was huge to effectively process locally on my machine in
 - I checked for duplicate rows to prevent bias during training. Since there was only 1 duplicate row, I dropped that row
 - I converted the pickup/dropoff datetime attributes to year, month, date, hour, minute, second and computed the trip duration in minutes between the pickup and dropoff times. I subsequently dropped the original datetime attributes as the derived attributes are sufficient to use for training and evaluation purposes.
 - I dropped the rows where trip_duration was either non-positive or over 3 hours to eliminate any noisy/invalid data
-- I dropped the rows with negative values of extra and the non-positive values of total_amount. As I further analyzed the range of values of total_amount, I noticed extremely high values and hence chose to winsorize $0.5$% of the dataset i.e. clipped the data between $0.5$ percentile and $99.5$ percentile to be conservative with the removal of the outliers. This cleared up $0.9394557120998955$ % of the dataset. 
+- I dropped the rows with negative values of extra and the non-positive values of total_amount. As I further analyzed the range of values of total_amount, I noticed extremely high values and hence chose to winsorize $0.5$% of the dataset i.e. clipped the data between $0.5$ percentile and $99.5$ percentile to be conservative with the removal of the outliers. This cleared up $0.9394557120998955$ % of the dataset.
+- Since the distribution of total_amount is right skewed, I updated the response variable to its log equivalent so as to make the distribution of the response variable more symmetric.
 - I checked the frequency counts of the categorical variables i.e. RatecodeID, payment_type, PULocationID, DOLocationID to determine the encoding to use for them. Since RatecodeID, payment_type only have 7 and 6 values respectively, I chose to perform one-hot encoding for them. Since PULocationID, DOLocationID have 262 values each, one hot encoding could significantly impact training times hence I chose frequency encoding for them to keep the dimensionality low.
 - I performed a final round of checks to ensure the data was clean before writing the data to another csv for modeling the Neural Net.
 
@@ -153,6 +154,16 @@ The input expected is along the following lines:
 ```
 python main.py <file_path> <test_ratio> <hidden_dimensions> <learning_rate> <activation_function> <max_iterations> <batch_size> <seed> <debug (y/n)>
 ```
+The validations executed on the inputs are as below:
+1. The file path must be valid
+2. The test ratio must be a float value between 0 and 1 (both upper and lower bounds being excluded)
+3. Hidden dimensions must be a positive integer
+4. Learning rate must be a positive integer
+5. Activation function must be one of "relu", "sigmoid", "tanh", "leaky_relu", "elu"
+6. Max iterations must be a positive integer
+7. Batch size must be a positive integer
+8. Seed must be a positive integer
+9. Debug must be either "y" or "n", this is to ensure one sees the debugging logs only if they truly want to.
 
 To run this using MPI, you can do one of the following:
 
