@@ -2,9 +2,8 @@
 The problem statement is to use stochastic gradient descent to update the gradients of a one hidden layer neural network to minimize the training loss until it ceases to decrease any further. 
 
 For a given dataset,
-$$
-\mathcal{D}=\left\{\left(x^{(i)}, y^{(i)}\right)\right\}_{i=1}^{N}, \quad x^{(i)}=\left(x_{1}^{(i)}, \ldots, x_{m}^{(i)}\right) \in \mathbb{R}^{m}, \quad y^{(i)} \in \mathbb{R}
-$$
+
+![Alt text](data/readme_images/dataset_expression?raw=true "Dataset expression")
 
 a neural network with one hidden layer approximates the map from $x_{i}$ to $y_{i}$ using the following equation:
 
@@ -14,14 +13,7 @@ $$
 
 where
 
-$$
-\begin{aligned}
-\theta=( & w_{1}, \ldots, w_{n}, w_{n+1} \\
-& w_{11}, \ldots, w_{1, m+1} \\
-& \ldots \\
-& \left.w_{n 1}, \ldots, w_{n, m+1}\right)
-\end{aligned}
-$$
+![Alt text](data/readme_images/weight_matrix?raw=true "Weight Matrix")
 
 is the set of all parameters in the model and $\sigma: \mathbb{R} \rightarrow \mathbb{R}$ is a non-linear activation function. The stochastic gradient method aims to solve the following minimization problem:
 
@@ -31,11 +23,7 @@ $$
 
 To find the optimal value of $\theta$, we start with an initial guess $\theta_{0}$, and update the solution with
 
-
-$$
-\theta_{k+1}=\theta_{k}-\eta \widetilde{\nabla_{\theta} R}\left(\theta_{k}\right), \tag{1}
-$$
-
+![Alt text](data/readme_images/gradient_descent?raw=true "Gradient Descent")
 
 where $\eta$ is the learning rate, and $\widetilde{\nabla_{\theta} R}$ is the approximation of the gradient
 
@@ -43,13 +31,13 @@ $$
 \nabla_{\theta} R(\theta)=\frac{1}{N} \sum_{i=1}^{N}\left[f\left(x^{(i)} ; \theta\right)-y^{(i)}\right] \nabla_{\theta} f\left(x^{(i)} ; \theta\right) .
 $$
 
-The approximation is done by randomly drawing $M$ distinct integers $\left\{j_{1}, \ldots, j_{M}\right\}$ from the set $\{1, \cdots, N\}$ and setting $\widetilde{\nabla_{\theta} R}$ to
+The approximation is done by randomly drawing $M$ distinct integers ![Alt text](data/readme_images/distinct_integer_set?raw=true "Distinct Integer") from the set $\{1, \cdots, N\}$ and setting $\widetilde{\nabla_{\theta} R}$ to
 
 $$
 \widetilde{\nabla_{\theta} R}(\theta)=\frac{1}{M} \sum_{i=1}^{M}\left[f\left(x^{\left(j_{i}\right)} ; \theta\right)-y^{\left(j_{i}\right)}\right] \nabla_{\theta} f\left(x^{\left(j_{i}\right)} ; \theta\right)
 $$
 
-The random set $\left\{j_{1}, \ldots, j_{M}\right\}$ must be updated for every iteration (1). The iteration terminates when $R\left(\theta_{k}\right)$ no longer decreases.
+The random set ![Alt text](data/readme_images/distinct_integer_set?raw=true "Distinct Integer") must be updated for every iteration (1). The iteration terminates when $R\left(\theta_{k}\right)$ no longer decreases.
 
 ## Dataset
 The dataset we want to execute the solution to the problem statement is nytaxi2022.csv which has $39656098$ rows and $19$ attributes. The attributes of which are described as below (source: [Kaggle](https://www.kaggle.com/datasets/diishasiing/revenue-for-cab-drivers) :
