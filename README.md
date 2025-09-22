@@ -1,9 +1,7 @@
 ## Problem Statement
 The problem statement is to use stochastic gradient descent to update the gradients of a one hidden layer neural network to minimize the training loss until it ceases to decrease any further. 
 
-For a given dataset,
-
-![Alt text](data/readme_images/dataset_expression?raw=true "Dataset expression")
+For a given dataset, <img src="readme_images/dataset_expression.png" width="400" >
 
 a neural network with one hidden layer approximates the map from $x_{i}$ to $y_{i}$ using the following equation:
 
@@ -11,9 +9,8 @@ $$
 f(x ; \theta)=\sum_{j=1}^{n} w_{j} \sigma\left(\sum_{k=1}^{m} w_{j k} x_{k}+w_{j, m+1}\right)+w_{n+1}
 $$
 
-where
-
-![Alt text](data/readme_images/weight_matrix?raw=true "Weight Matrix")
+where 
+<img src="readme_images/weight_matrix.png" width="200">
 
 is the set of all parameters in the model and $\sigma: \mathbb{R} \rightarrow \mathbb{R}$ is a non-linear activation function. The stochastic gradient method aims to solve the following minimization problem:
 
@@ -21,9 +18,9 @@ $$
 \min _{\theta} R(\theta)=\frac{1}{2 N} \sum_{i=1}^{N}\left|f\left(x^{(i)} ; \theta\right)-y^{(i)}\right|^{2}
 $$
 
-To find the optimal value of $\theta$, we start with an initial guess $\theta_{0}$, and update the solution with
+To find the optimal value of $\theta$, we start with an initial guess $\theta_{0}$, 
 
-![Alt text](data/readme_images/gradient_descent?raw=true "Gradient Descent")
+and update the solution with <img src="readme_images/gradient_descent.png" width="500">
 
 where $\eta$ is the learning rate, and $\widetilde{\nabla_{\theta} R}$ is the approximation of the gradient
 
@@ -31,13 +28,13 @@ $$
 \nabla_{\theta} R(\theta)=\frac{1}{N} \sum_{i=1}^{N}\left[f\left(x^{(i)} ; \theta\right)-y^{(i)}\right] \nabla_{\theta} f\left(x^{(i)} ; \theta\right) .
 $$
 
-The approximation is done by randomly drawing $M$ distinct integers ![Alt text](data/readme_images/distinct_integer_set?raw=true "Distinct Integer") from the set $\{1, \cdots, N\}$ and setting $\widetilde{\nabla_{\theta} R}$ to
+The approximation is done by randomly drawing $M$ distinct integers <img src="readme_images/distinct_integer_set.png" width="100"> from the set $\{1, \cdots, N\}$ and setting $\widetilde{\nabla_{\theta} R}$ to
 
 $$
 \widetilde{\nabla_{\theta} R}(\theta)=\frac{1}{M} \sum_{i=1}^{M}\left[f\left(x^{\left(j_{i}\right)} ; \theta\right)-y^{\left(j_{i}\right)}\right] \nabla_{\theta} f\left(x^{\left(j_{i}\right)} ; \theta\right)
 $$
 
-The random set ![Alt text](data/readme_images/distinct_integer_set?raw=true "Distinct Integer") must be updated for every iteration (1). The iteration terminates when $R\left(\theta_{k}\right)$ no longer decreases.
+The random set <img src="readme_images/distinct_integer_set.png" width="100"> must be updated for every iteration (1). The iteration terminates when $R\left(\theta_{k}\right)$ no longer decreases.
 
 ## Dataset
 The dataset we want to execute the solution to the problem statement is nytaxi2022.csv which has $39656098$ rows and $19$ attributes. The attributes of which are described as below (source: [Kaggle](https://www.kaggle.com/datasets/diishasiing/revenue-for-cab-drivers) :
@@ -233,5 +230,3 @@ and then invoking the cyclic scheduler within the train function
     model.learning_rate = cyclical_lr_v2(iteration, step_size=step_size, base_lr=base_lr)
 
 ```
-
-
