@@ -100,7 +100,6 @@ def cyclical_lr(iteration, base_lr=1e-5, step_size=500, max_lr=2e-4):
     x = np.abs(iteration / step_size - 2 * cycle + 1)
     return base_lr + (max_lr - base_lr) * np.maximum(0, 1 - x) * size
 
-
 def train_on_batch(model, X_local, y_local):
     """
     Train on a local batch and return local SSE.
@@ -153,7 +152,7 @@ def train(model, X_train, y_train, max_iterations, batch_size, seed, stopping_cr
     rng = np.random.default_rng(seed + rank)
     iteration = 0
     previous_loss = None
-    base_lr = model.learning_rate
+    #base_lr = model.learning_rate
 
     while iteration < max_iterations:
         # Sample M indices for this iteration (mini-batch)
@@ -163,13 +162,13 @@ def train(model, X_train, y_train, max_iterations, batch_size, seed, stopping_cr
 
         # Update learning rate using a cyclic scheduler
         # defining step sizes based on batch size to reduce training time
-        if batch_size >= 256:
-            step_size = 1000
-        elif batch_size >= 128:
-            step_size = 2000
-        else:
-            step_size = 2500
-        model.learning_rate = cyclical_lr(iteration, step_size=step_size, base_lr=base_lr)
+        #if batch_size >= 256:
+        #    step_size = 1000
+        #elif batch_size >= 128:
+        #    step_size = 2000
+        #else:
+        #    step_size = 2500
+        #model.learning_rate = cyclical_lr(iteration, step_size=step_size, base_lr=base_lr)
 
         # Train on batch and get batch SSE
         local_sse = train_on_batch(model, X_batch, y_batch)
