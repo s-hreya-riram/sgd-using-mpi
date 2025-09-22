@@ -1,4 +1,3 @@
-# NeuralNet.py
 from math import sqrt
 import numpy as np
 from mpi4py import MPI
@@ -16,7 +15,7 @@ class NeuralNet:
     Defining a structure for the NeuralNet model with the parameters -
     input_dim, hidden_dim, learning_rate, activation_function, num_processes and input seed.
 
-    We initialize the starting weights based on the activation function to ensure faster
+    Below the starting weights are initialized based on the activation function to ensure faster
     convergence following https://www.deeplearning.ai/ai-notes/initialization/index.html
     """
     def __init__(self, input_dim, hidden_dim, learning_rate, activation_fn, num_processes, seed, debug=False):
@@ -99,7 +98,7 @@ def cyclical_lr(iteration, base_lr=1e-5, step_size=500, max_lr=2e-4):
     """
     cycle = np.floor(1 + iteration / (2 * step_size))
     x = np.abs(iteration / step_size - 2 * cycle + 1)
-    return base_lr + (max_lr - base_lr) * np.maximum(0, 1 - x)
+    return base_lr + (max_lr - base_lr) * np.maximum(0, 1 - x) * size
 
 
 def train_on_batch(model, X_local, y_local):

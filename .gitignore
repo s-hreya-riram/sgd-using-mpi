@@ -6,3 +6,5 @@ data/
 logs/
 .ipynb_checkpoints/
 /venv/
+build/
+dist/

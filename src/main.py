@@ -1,3 +1,7 @@
+
+import multiprocessing
+multiprocessing.set_start_method("fork", force=True)
+
 import os
 
 # Limiting the number of threads to control CPU utilization
@@ -49,7 +53,7 @@ def validateFloatDecimals(value):
     return float_value
 
 def validateActivationFunction(value):
-    valid_functions = ["relu", "sigmoid", "tanh", "linear"]
+    valid_functions = ["relu", "sigmoid", "tanh", "leaky_relu", "elu"]
     if value not in valid_functions:
         raise ValueError(f"Activation function must be one of {valid_functions}")
     return value
