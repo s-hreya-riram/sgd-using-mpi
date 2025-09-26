@@ -220,7 +220,7 @@ def cyclical_lr_v2(iteration, base_lr=1e-5, step_size=500, max_lr=2e-4):
     - max_lr: maximum LR
     - step_size: number of iterations to reach max_lr from base_lr
 
-    The LR cycles between base_lr and max_lr indefinitely.
+    The LR is more like a hybrid between cyclical and exponential LR.
     """
     cycle = np.floor(1 + iteration / (2 * step_size))
     x = np.abs(iteration / step_size - 2 * cycle + 1)
