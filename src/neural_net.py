@@ -152,7 +152,7 @@ def train(model, X_train, y_train, max_iterations, batch_size, seed, stopping_cr
     rng = np.random.default_rng(seed + rank)
     iteration = 0
     previous_loss = None
-    #base_lr = model.learning_rate
+    base_lr = model.learning_rate
 
     while iteration < max_iterations:
         # Sample M indices for this iteration (mini-batch)
@@ -162,13 +162,13 @@ def train(model, X_train, y_train, max_iterations, batch_size, seed, stopping_cr
 
         # Update learning rate using a cyclic scheduler
         # defining step sizes based on batch size to reduce training time
-        #if batch_size >= 256:
-        #    step_size = 1000
-        #elif batch_size >= 128:
-        #    step_size = 2000
-        #else:
-        #    step_size = 2500
-        #model.learning_rate = cyclical_lr(iteration, step_size=step_size, base_lr=base_lr)
+        if batch_size >= 256:
+            step_size = 1000
+        elif batch_size >= 128:
+            step_size = 2000
+        else:
+            step_size = 2500
+        model.learning_rate = cyclical_lr(iteration, step_size=step_size, base_lr=base_lr)
 
         # Train on batch and get batch SSE
         local_sse = train_on_batch(model, X_batch, y_batch)
@@ -226,7 +226,7 @@ def execute_model(model, X_train, y_train, X_test, y_test,
     """
     Executes distributed training + evaluation with timing and logging.
     """
-    stopping_criterion = 1e-5
+    stopping_criterion = 1e-6
     logger.debug(f"Rank {rank} executing model training and evaluation")
     comm.Barrier()
 
@@ -269,7 +269,7 @@ def execute_model(model, X_train, y_train, X_test, y_test,
             train_time_max, train_time_avg,
             eval_time_max, eval_time_avg,
             total_time_max, total_time_avg,
-            logfile="../logs/normalization_fix/new/train_test_rmse.csv"
+            logfile="../logs/normalization_fix/final/train_test_rmse.csv"
         )
         logger.info(f"[Final Results] Train RMSE: {train_rmse:.4f} | Test RMSE: {test_rmse:.4f}")
         logger.info(f"[Timing Summary] "

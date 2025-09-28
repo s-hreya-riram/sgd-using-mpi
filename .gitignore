@@ -8,3 +8,7 @@ logs/
 /venv/
 build/
 dist/
+.spec
+*-imag*.png
+rmse/
+line plot/
