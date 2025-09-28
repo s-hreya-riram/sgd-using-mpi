@@ -101,7 +101,6 @@ Since one of the requirements is to store data nearly evenly among processes, th
 num_rows_total = comm.bcast(n_rows, root=0)       
 ```
 
-
 Since the other processes are aware of the total number of rows, each process locally determines the number of rows it needs to read based on its rank. The start index, end index and skiprows are computed using the rank, and this makes the split among all processes nearly uniform.
 
 To make the reading more efficient, we perform a chunk-based reading of the processed file with a chunk size of $100000$
@@ -140,11 +139,8 @@ Additional notes:
 - Learning rate initialization: I initialized the learning rate as a constant at first, the RMSE and convergence results were not satisfactory. I then tried using a Cyclic Scheduler Learning Rate (Reference: [Learning Rate Schedulers](https://machinelearningmastery.com/a-gentle-introduction-to-learning-rate-schedulers/)), while the test RMSE is within 0.05 of the train RMSE or even lower than the RMSE indicating a good generalization, the learning rate set was not accounting for number of processes resulting in more iterations and a slower convergence 
 
 
-## Results
-Still work in progress, I am working on plotting them in the plotting.ipynb Jupyter notebook in this repository
-
-## Improvements
-Still work in progress, I am working on plotting them in the plotting.ipynb Jupyter notebook in this repository
+## Results and Improvements
+They have been documented in the report in detail using the plotting and tables generated using inference.ipynb under the Jupyter notebooks folder.
 
 ## How to run the code
 As a pre-requisite, ensure that you have Python and MPI set up in the machine you are looking to execute this code on.
