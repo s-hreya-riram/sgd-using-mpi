@@ -5,7 +5,8 @@ def log_test_rmse(num_processes, num_iterations, max_iterations, batch_size, act
             train_rmse, test_rmse, train_time_max, train_time_avg, test_time_max, test_time_avg, 
             total_time_max, total_time_avg, logfile):
     """
-    Appends training metrics to a CSV file. Only rank 0 writes.
+    Appends train-test RMSE metrics for each combination of hyperparameters to a CSV file. 
+    Only rank 0 writes.
     """
 
     if rank == 0:
@@ -23,7 +24,8 @@ def log_test_rmse(num_processes, num_iterations, max_iterations, batch_size, act
 
 def log_training_metrics(iteration, batch_size, activation, learning_rate, num_processes, training_loss, logfile="../logs/normalization_fix/final/training_metrics.csv"):
     """
-    Appends training metrics to a CSV file. Only rank 0 writes.
+    Appends training metrics for all iterations to a CSV file. 
+    Only rank 0 writes.
     """
     if rank == 0:
         # Ensure directory exists

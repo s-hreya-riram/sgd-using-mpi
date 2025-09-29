@@ -12,7 +12,7 @@ class Normalizer:
 
     Additionally this takes in the feature columns and any columns to be skipped from normalization
     The reason for including this logic is to evaluate the test rmse with/without normalizing 
-    features that were frequency encoded and(or) are categorical
+    features that were frequency encoded and(or) are categorical.
     """
     def __init__(self, feature_columns, skip_normalization_columns, debug=False):
         logger.info("Starting Normalizer")
@@ -29,8 +29,8 @@ class Normalizer:
         self.y_train_std = None
 
     def normalize(self, X_train_local, y_train_local):
-        '''calculate local sum/sq diff for each process and then using allreduce 
-        to get global sum/sqdiff to normalize the training feature and label vectors.'''
+        """Calculate local sum/sq diff for each process and then using allreduce
+        to get global sum/sqdiff to normalize the training feature and label vectors."""
         logger.info(f"Starting normalization of training data for rank {rank}")
         # determine the indices of the columns to be normalized
         normalize_indices = self.get_normalize_indices(X_train_local)

@@ -6,14 +6,14 @@
 PYTHON_SCRIPT="main.py" 
 
 # Experiment parameters
-NUM_PROCESSES=(5)
+NUM_PROCESSES=(1 2 3 4 5)
 FILE_PATH="../data/processed/nytaxi2022_preprocessed_final.csv"
 TEST_RATIO=0.3
 HIDDEN_LAYERS=16
 LEARNING_RATE=0.00001
-ACTIVATION_FUNCTION=("relu")
+ACTIVATION_FUNCTION=("relu" "tanh" "sigmoid" "leaky_relu" "elu")
 NUM_ITERATIONS=1000000
-BATCH_SIZES=(16 32)
+BATCH_SIZES=(16 32 64 128 256 512)
 SEED=123
 DEBUG_MODE=y  # Set to true to enable debug mode
 

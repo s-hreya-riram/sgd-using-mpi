@@ -9,6 +9,7 @@
 \usepackage{stmaryrd}
 \usepackage{bbold}
 \usepackage{hyperref}
+\usepackage{listings}
 \hypersetup{colorlinks=true, linkcolor=blue, filecolor=magenta, urlcolor=cyan,}
 \urlstyle{same}
 
@@ -75,7 +76,7 @@ $$
 The random set $\left\{j_{1}, \ldots, j_{M}\right\}$ must be updated for every iteration (1). The iteration terminates when $R\left(\theta_{k}\right)$ no longer decreases.
 
 \subsection{Dataset}
-The dataset to test the solution to the problem statement on is nytaxi2022.csv which has $39656098$ rows and $19$ attributes. The attributes of which are described below (source: \href{https://www.kaggle.com/datasets/diishasiing/revenue-for-cab-drivers}{Kaggle}) :
+The dataset to test the solution to the problem statement on is nytaxi2022.csv which has $39656098$ rows and $19$ attributes. These attributes are described below (source: \href{https://www.kaggle.com/datasets/diishasiing/revenue-for-cab-drivers}{Kaggle}) :
 
 \begin{enumerate}
     \item VendorID: A unique identifier for the taxi vendor or service provider.
@@ -106,7 +107,7 @@ The dataset to test the solution to the problem statement on is nytaxi2022.csv w
   \item Split the dataset into a training set (70\%) and a test set (30\%).
   \item Predict the total fare amount (column total\_amount) using the following columns as features: \\ \verb|tpep_pickup_datetime|, \verb|tpep_dropoff_datetime|, \verb|passenger_count|, \verb|trip_distance|, \verb|RatecodeID|, \verb|PULocationID|
     \verb| DOLocationID|, \verb |payment\_type|, \verb|extra|
-  \item You may need to preprocess of the data by dropping some incomplete rows and normalizing the data.
+  \item You may need to preprocess the data by dropping some incomplete rows and normalizing the data.
 
   \item All processes should compute the stochastic gradient $\widetilde{\nabla_{\theta} R}$ in parallel.
   \item Once the solution $\theta$ is found, the code can compute the RMSE in parallel.
@@ -115,22 +116,34 @@ The dataset to test the solution to the problem statement on is nytaxi2022.csv w
 \newpage
 \section{Main Approach}
 \subsection{Exploratory Data Analysis}
-Since the given dataset was huge to effectively process locally on my machine in a distributed setting, I performed the following exploratory data analysis (not distributed) in a Jupyter notebook \verb|exploratory_data_analysis.ipynb| :
+Since the given dataset was huge, to effectively process it locally on my machine in a distributed setting, I performed the following exploratory data analysis (not distributed) in a Jupyter notebook \verb|exploratory_data_analysis.ipynb| :
 
 \begin{enumerate}
     \item I loaded the input file using the pandas' library's \verb|read_csv| function while parsing the datetime attributes \verb|tpep_pickup_datetime|, \\ 
     \verb|tpep_dropoff_datetime| the first time and cached 
-    the entire dataframe as a pickle file to speed up subsequent runs
-    \item I checked the percentage of missing data in columns across the dataframe which was $3.450423$ \%, since the fraction was small, I chose to drop the rows with any missing data
-    \item I checked for duplicate rows to prevent bias during training. Since there was only 1 duplicate row, I dropped that row
+    the entire dataframe as a pickle file to speed up subsequent runs.
+    \item I checked the percentage of missing data in columns across the dataframe which was $3.450423$ \%, since the fraction was small, I chose to drop the rows with any missing data.
+    \item I checked for duplicate rows to prevent bias during training. Since there was only 1 duplicate row, I dropped that row.
     \item I converted the pickup/dropoff datetime attributes to year, month, date, hour, minute, second and computed the trip duration in minutes between the pickup and dropoff times. I subsequently dropped the original datetime attributes as the derived attributes are sufficient to use for training and evaluation purposes.
-    \item I dropped the rows where \verb|trip_duration| was either non-positive or over 3 hours to eliminate any noisy/invalid data
-    \item I dropped the rows with negative values of \verb|extra| and the non-positive values of \verb|total_amount|. As I further analyzed the range of values of \verb|total_amount|, I noticed extremely high values and hence chose to winsorize $0.5$ \% of the dataset i.e. clipped the data between $0.5$ percentile and $99.5$ percentile to be conservative with the removal of the outliers. This cleared up $0.9394557120998955$ \% of the dataset. 
-    \item I checked the frequency counts of the categorical variables i.e. \verb|RatecodeID|, \verb|payment_type|, \verb|PULocationID|, \verb|DOLocationID| to determine the encoding to use for them. Since \verb|RatecodeID|, \verb|payment_type| only have 7 and 6 values respectively, I chose to perform one-hot encoding for them. Since \verb|PULocationID|, \verb|DOLocationID| have 262 values each, one hot encoding could significantly impact training times hence I chose frequency encoding for them to keep the dimensionality low.
+    \item I dropped the rows where \verb|trip_duration| was either non-positive or over 3 hours to eliminate any noisy/invalid data.
+    \item I dropped the rows with negative values of \verb|extra| and the non-positive values of \verb|total_amount|. As I further analyzed the range of values of \verb|total_amount|, I noticed extremely high values and hence chose to winsorize $0.5$ \% of the dataset i.e. clipped the \verb|total_amount| to be between $0.5$ percentile and $99.5$ percentile to be conservative with the removal of the outliers. This cleared up $0.9394557120998955$ \% of the dataset. 
+    \item I checked the frequency counts of the categorical variables i.e. \verb|RatecodeID|, \verb|payment_type|, \verb|PULocationID|, \verb|DOLocationID| to determine the encoding to use for them. Since \verb|RatecodeID|, \verb|payment_type| only have 7 values and 6 values respectively, I chose to perform one-hot encoding for them. Since \verb|PULocationID|, \verb|DOLocationID| have 262 values each, one-hot encoding could significantly impact training times hence I chose frequency encoding for them to keep the dimensionality low.
+    \item I checked the distribution of \verb|total_amount| which was right skewed as indicated below:
+
+    \begin{center}
+    \includegraphics[width=100mm,scale=0.5]{histogram-1.png }
+    \end{center}
+
+    So I performed a log transformation of the response variable (this was also done as a part of the invocation of \verb|final_checks()| method in same Jupyter notebook) the  so as to reduce skewness and reduce the impact of any outliers:
+
+    \begin{center}
+    \includegraphics[width=100mm,scale=0.5]{histogram-2.png }
+    \end{center}
+    
     \item I performed a final round of checks to ensure the data was clean before writing the data to another csv for modeling the Neural Net.
 \end{enumerate} \\
 
-The exploratory data analysis concluded with a reduction from $39656098$ rows to $37603658$ rows through removal of outliers, duplicates, invalid data alongside the necessary transformation of given columns through datetime attribute extraction, encoding etc. to have $30$ features (excluding the response variable \verb|total_amount|)
+The exploratory data analysis concluded with a reduction from $39656098$ rows to $37603658$ rows through removal of outliers, duplicates, invalid data along with the necessary transformation of given columns through datetime attribute extraction, encoding etc. to have $30$ features (excluding the response variable \verb|total_amount|)
 
 \subsection{Distributed System}
 The distributed system comprises the following key components that each execute in parallel across different processes:
@@ -142,7 +155,7 @@ The distributed system comprises the following key components that each execute 
 
 \subsubsection{IO and splitting the data between test and train}
 
-The IO and test-train split can be summarized as below: \\
+The IO and test-train split can be summarized as follows : \\
 
 Since one of the requirements is to store data nearly evenly among processes, the process with rank $0$ counts the number of rows in the input file and then broadcasts the count to the other processes using the MPI broadcast function:\\
     
@@ -150,7 +163,7 @@ Since one of the requirements is to store data nearly evenly among processes, th
 $\verb|num_rows_total| = comm.bcast(\verb|n_rows|, root=0)$       
 \end{code} \\
 
-Since the other processes are aware of the total number of rows, each process locally determines the number of rows it needs to read based on its rank. The start index, end index and skiprows are computed using the rank, and this makes the split among all processes nearly uniform. \\
+Since each process is aware of the total number of rows, each process locally determines the number of rows it needs to read based on its rank. The start index, end index and skiprows are computed using the rank, and this makes the split among all processes nearly uniform. \\
 
 To make the reading more efficient, we perform a chunk-based reading of the processed file with a chunk size of $100000$ \\
  
@@ -167,17 +180,17 @@ The global training mean and global training stddev for the training labels are 
 
 These means and stddevs are used to normalize the testing data. \\
 
-Since I was looking to determine the impact of not normalizing the feature-encoded attributes, I added the functionality of skipping normalization for certain columns to evaluate the impact of doing so on the experiments. \\
+Since one may choose not to normalize certain attributes, I added the ability to skip normalization for certain columns to evaluate the impact of doing so on the experiments. \\
 
 \subsubsection{Neural Network}
 The One Hidden Layer Neural Network has the following steps that are applied in the training stage:
 \begin{enumerate}
-    \item Forward propagation: Starting off with random weights, the input data (i.e. features from the processed data) is passed on to a hidden layer which then generates an output. So the activation is calculated on the weighted sum of inputs which on another weighted summation forms the output
+    \item Forward propagation: Starting off with random weights, the input data (i.e. features from the processed data) is passed on to a hidden layer which then generates an output. So the activation is calculated on the weighted sum of inputs which in turn is used in another weighted summation to yield a prediction of the output
     \item Backward propagation: The predicted output generated by forward propagation is then compared against the actual output to adjust the weights and the bias at the hidden layer and then backpropagate it to adjust the weights and bias at the input layer using derivative of the chosen activation function. 
-    \item Gradient update: The weights are adjusted based on the applicable learning rate and gradients. The gradients are computed at a batch level (using M integers drawn at random), they are the calculated using \\ \verb|global_summed_gradients| and \verb|global_count|, obtained by MPI's allreduce function on local weighted gradients (weighted as the sizes of batches may vary) and local count respectively.
+    \item Gradient update: The weights are adjusted based on the applicable learning rate and gradients. The gradients are computed at a batch level (using M integers drawn at random), they are then calculated using \\ \verb|global_summed_gradients| and \verb|global_count|, obtained by MPI's allreduce function on local weighted gradients (weighted as the sizes of batches may vary) and local count respectively.
 \end{enumerate} \\
 
-These steps are continuously repeated within a batch until the difference between the loss computed for a batch of data and its previous batch are within a certain chosen threshold ($1e-6$). This approximation of global loss at the batch level is used as a stopping criterion to exit training. The train RMSE is calculated using the updated weights/bias on the full train dataset.
+These steps are continuously repeated within a batch until the difference between the loss computed for a batch of data and its previous batch are within the stopping criterion (I tried $1e-5$ or $1e-6$ as the stopping criterion threshold in the result/attempts in the subsequent sections) or if the number of iterations are over the \verb|max_iterations| input by the user. This approximation of global loss at the batch level is used as a stopping criterion to exit training. The train RMSE is calculated using the updated weights/bias on the full train dataset.
 
 The evaluation stage uses the weights computed in the training stage to predict the labels, the test RMSE is computed similar to how the train RMSE is computed. 
 
@@ -201,7 +214,7 @@ The parameters used to train this model are : \\
 \includegraphics[width=100mm,scale=0.5]{constant-image1.png }
 \end{center}
 
-However, the constant learning rate results in early convergence resulting in high RMSEs. The table below summarizes the best performing configurations (throughout this report, configurations are stated as \\ \verb|num_processes - batch_size - activation|) for constant learning rate:
+However, the constant learning rate results in early convergence resulting in high RMSEs. The table below summarizes the best performing configurations (throughout this report, configurations are stated as \\ \verb|num_processes - batch_size - activation|) for constant learning rate (NOTE: The Train Time is in minutes unless noted otherwise) :
 
 \begin{center}
 \begin{tabular}{|l|c|c|c|c|c|}
@@ -217,11 +230,11 @@ Configuration & Iterations & Learning Rate & Train RMSE & Test RMSE & Max Train 
 \end{tabular}
 \end{center}
 
-The constant learning rate demonstrates consistent train-test generalization but suffers from premature convergence, with the best test RMSE around 0.44951 which is high and suggests room for improvement.
+The constant learning rate demonstrates consistent train-test generalization but suffers from premature convergence, with the best test RMSE around $0.449951$ which is high and suggests room for improvement.
 
 The timing plots show interesting patterns in distributed performance. The gap between maximum and average training times reflects MPI synchronization overhead, where the slowest process determines when all processes can proceed. Generally, the max/avg time ratios remain fairly consistent, suggesting that the data is being partitioned effectively across processes. 
 
-However, some timing spikes appear at a higher number of processes, likely when communication overhead starts outweighing computational benefits. 
+Some timing spikes appear at a higher number of processes, likely when communication overhead starts outweighing computational benefits. 
 Larger batch sizes tend to perform better in parallel because they increase the computation-to-communication ratio and have lower MPI overhead.
 
 \begin{center}
@@ -234,7 +247,7 @@ Larger batch sizes tend to perform better in parallel because they increase the 
 
 Looking at the training loss curves, there's a clear difference between single-process and multi-process runs. With just one process, the loss shows more spikes and instability, which makes sense since there's no gradient averaging happening. When multiple processes work together, the loss curves become much smoother because gradients are being averaged across processes.
 
-The constant learning rate enables fast convergence, but this speed comes at a cost - the model likely stops improving before finding the best solution. Across different configurations, the loss consistently plateaus when hitting the 1e-5 stopping threshold, which suggests the stopping criterion is working as intended.
+The constant learning rate enables fast convergence, but this speed comes at a cost - the model likely stops improving before finding the best solution.
 
 \begin{center}
 \includegraphics[width=90mm,scale=0.5]{constant-image4.png }
@@ -246,10 +259,10 @@ The learning rate is constant as the name suggests, and the same is indicated by
 \includegraphics[width=90mm,scale=0.5]{constant-image5.png }
 \end{center}
 
-\section{Attempts to improve RMSE and convergence}
+\section{Attempts to improve test RMSE and convergence}
 
 \subsection {Attempt 1: Cyclic Scheduler Learning Rate }
-In an attempt to slow down convergence and have lower RMSE values, I tried using cyclic scheduler with a base learning rate of 1e-5, step size of 500 and max learning rate of $2e-4$ i.e. the learning rate would keep cycling between the base learning rate and max learning rate enabling gradient adjustment in a suitable way over multiple (cycles of) iterations.
+In an attempt to slow down convergence and have lower RMSE values, I tried using cyclic scheduler with a base learning rate of $1e-5$, step size varying with batch size and max learning rate of $2e-4$ i.e. the learning rate would keep cycling between the base learning rate and max learning rate enabling gradient adjustment in a suitable way over multiple (cycles of) iterations.
 
 The parameters used to train this model are : \\
 (1) nodes in the hidden layer = $16$ as about half the size of the input features ($30$) (Reference: \href{https://medium.com/data-science/17-rules-of-thumb-for-building-a-neural-network-93356f9930af}{Medium article - Building a Neural Network}), \\
@@ -281,7 +294,7 @@ The cyclic learning rate shows substantial improvement over constant learning ra
 
 The cyclic learning rate creates more complex timing patterns than the constant approach. Some specific combinations work really well for parallelization - for instance, ReLU with batch sizes 128 or 512, and sigmoid/leaky ReLU with batch size 256. But the timing isn't always predictable, and sometimes adding more processes doesn't speed things up as much as expected.
 
-This happens because the cyclic nature of the learning rate adds computational overhead that varies depending on which activation function we're using. The training takes longer compared to constant learning rate, but the trade-off is worth it given how much better the final test RMSE values are.
+This happens because the cyclic nature of the learning rate adds computational overhead that varies depending on which activation function used. The training takes longer compared to constant learning rate, but the trade-off is worth it given how much better the final test RMSE values are.
 
 \begin{center}
 \includegraphics[width=90mm,scale=0.5]{cyclic-image2.png }
@@ -315,7 +328,7 @@ The parameters used to train this model are : \\
 \includegraphics[width=90mm,scale=0.5]{hybrid-image1.png }
 \end{center}
 
-There is further improvement in the RMSE values compared to the previous two attempts specifically when there are multiple processes at play - \verb|leaky_relu, elu| have some of the lowest RMSEs when we train/test the model across batches of all different sizes. The table below demonstrates the performance of the size-factor enhanced learning rate:
+There is further improvement in the RMSE values compared to the previous two attempts specifically when there are multiple processes at play - \verb|tanh, leaky_relu, relu, elu| have some of the lowest RMSEs when we train/test the model across batches of all different sizes. The table below demonstrates the performance of the size-factor enhanced learning rate:
 
 \begin{center}
 \begin{tabular}{|l|c|c|c|c|c|}
@@ -335,9 +348,9 @@ Configuration & Iterations & Learning Rate & Train RMSE & Test RMSE & Max Train 
 
 The size-factor modification is an improvement over standard cyclic learning rate (0.183704 vs 0.209554 RMSE). Most remarkably, the best configuration continues to demonstrate perfect generalization with near-identical train and test RMSE.
 
-By scaling the learning rate with the number of processes, this approach helps compensate for how gradients get averaged across processes in distributed training. While the training takes longer than previous approaches, the quality of results i.e., achieving 0.1837 RMSE with the 1e-5 stopping criterion, compensates for the extra time.
+By scaling the learning rate with the number of processes, this approach helps compensate for how gradients are averaged across processes in distributed training. While the training takes longer than previous approaches, the quality of results i.e., achieving 0.1837 RMSE with the 1e-5 stopping criterion, compensates for the extra time.
 
-Using more processes often means needing more iterations to converge, but the final solution quality is better due to the learning rate scaling. Different activation functions show varying timing patterns under this approach, which likely reflects their different computational requirements and how they respond to the scaled learning rate.
+Different activation functions show varying timing patterns under this approach, which likely reflects their different computational requirements and how they respond to the scaled learning rate.
 
 This approach prioritizes achieving the best possible model quality against unseen data over training time, it achieves this better than the previous two approaches.
 
@@ -349,13 +362,13 @@ This approach prioritizes achieving the best possible model quality against unse
 \includegraphics[width=90mm,scale=0.5]{hybrid-image3.png }
 \end{center}
 
-Compared to the line chart for cyclic learning rate, barring two combinations {(tanh, 1), (elu, 1)}, the learning rate demonstrates superior stability and convergence properties with the size factor modification.
+With the inclusion of the size-factor modification, the learning rate demonstrates improved stability and convergence as the number of processes increases.
 
 \begin{center}
 \includegraphics[width=90mm,scale=0.5]{hybrid-image4.png}
 \end{center}
 
-The learning rate is still essentially cyclic as the name suggests, and it fluctuates with both the batch size and the number of processes is indicated in the plot below.
+The learning rate is still essentially cyclic, it fluctuates with both the batch size and the number of processes is indicated in the plot below.
 
 \begin{center}
 \includegraphics[width=90mm,scale=0.5]{hybrid-image5.png }
@@ -363,7 +376,7 @@ The learning rate is still essentially cyclic as the name suggests, and it fluct
 
 \subsection{Attempt 3: Custom Learning Rate with stricter stopping criteria}
 
-I updated the stopping criteria to be $1e-6$ (from $1e-5$) to slow down the convergence while attempting to improve the test RMSE. Owing to the performance of \verb|tanh, relu, leaky_relu, elu| for process count = 5 and batch sizes = 16/32 in Attempt 2, I limited testing this improvement attempt to only test these cases. This attempt achieved the best results:
+I updated the stopping criteria to be $1e-6$ (from $1e-5$) to slow down the convergence while attempting to improve the test RMSE. Owing to the performance of \verb|tanh, relu, leaky_relu, elu| for process count = 5 and batch sizes = 16/32 in Attempt 2, I limited testing this improvement attempt to these cases. This attempt achieved the best results:
 
 The parameters used to train this model are exactly the same as that of Attempt 2 except for the updated stopping criterion noted above: \\
 (1) nodes in the hidden layer = $16$ as about half the size of the input features ($30$) (Reference: \href{https://medium.com/data-science/17-rules-of-thumb-for-building-a-neural-network-93356f9930af}{Medium article - Building a Neural Network}), \\
@@ -384,7 +397,7 @@ Configuration & Iterations & Train RMSE & Test RMSE & Max Train Time \\
 \end{tabular}
 \end{center}
 
-The stricter stopping criterion ($1e-6$) produced exceptional results, with the best configuration achieving $0.1407$ RMSE and perfect train-test generalization. This represents a significant improvement over the 1e-5 results.
+The stricter stopping criterion ($1e-6$) produced even better results, with the best configuration achieving $0.1407$ RMSE and a near perfect train-test generalization. The test RMSE has improved by 23.42\% over the $1e-5$ results.
 
 \subsection{Cross-Method Performance Comparison}
 The evolution from constant to size-factor enhanced learning rates with stricter stopping criteria shows a significant improvement:
@@ -402,19 +415,23 @@ Size-Factor LR (1e-5) & 0.183761 & 59.2\% better & 1.0 \\
 \end{tabular}
 \end{center}
 
-The stricter stopping criterion combined with size-factor scaling achieved the best results, demonstrating that the quality improvement justifies the increased training time.
+The stricter stopping criterion combined with size-factor scaling achieved the best results, demonstrating that quality improvement justifies the increased training time.
 
 \subsection{Key Learning: Size-Factor Learning Rate}
 The main improvement came from scaling the learning rate by the number of processes. This works because:
 
-When multiple processes average their gradients together, the gradient values become smaller. In an attempt to compensate for it, I multiplied the learning rate by the number of processes to keep the gradient updates strong.
+When multiple processes average their gradients together, the gradient values become smaller. In an attempt to compensate for it, I multiplied the learning rate by the number of processes to keep the gradient updates strong.\\
 
-\textbf{Formula used for learning rate}:
-$$\eta_{effective} = \eta_{base} \times \text{cyclic\_factor}(t) \times \text{num\_processes}$$
+\textbf{Formula used for the effective learning rate (noted as "lr" below)}:
+\begin{lstlisting}
+ cycle = np.floor(1 + iteration / (2 * step_size))
+ x = np.abs(iteration / step_size - 2 * cycle + 1)
+ lr = base_lr + (max_lr - base_lr) * np.maximum(0, 1 - x) * num_processes
+\end{lstlisting} \\
 
 The inferences from this attempt are as follows :
 \begin{enumerate}
-    \item Much better RMSE results (68.7\% improvement)
+    \item Much better RMSE results (68.7\% improvement over baseline constant learning rate)
     \item Train and test RMSE almost identical (good generalization)  
     \item Worked well with different activation functions
     \item Made better use of multiple processes
@@ -431,34 +448,31 @@ I noticed an important pattern with different batch sizes:
 
 \section{Conclusion}
 
-This report explored several approaches to implement distributed neural network training using MPI, achieving excellent performance on the NYC taxi fare prediction dataset. The main innovation is a cyclical learning rate that scales with the number of processes, helping to compensate for how gradients are averaged across distributed processes. Combined with a stricter convergence criterion, this method achieved a test RMSE of 0.1407 with perfect train-test generalization - a $68.7$\% improvement over the constant learning rate baseline.
+This report explores several approaches to implement distributed neural network training using MPI, achieving a good performance on the NYC taxi fare prediction dataset. The main experiment performed in this report is a cyclical learning rate that scales with the number of processes, helping to compensate for how gradients are averaged across distributed processes. Combined with a stricter convergence criterion ($1e-6$), this method achieved a test RMSE of 0.1407 with perfect train-test generalization - a $68.7$\% improvement over the constant learning rate baseline.
 
 \section{Future Improvements}
 
-If I had more time to work on this project, I would explore:
+If I had more time to work on this project, I would explore :
 
 \subsection{Testing Different Approaches}
 \begin{enumerate}
-    \item Try other ways to scale the learning rate (maybe square root of processes instead of linear)
     \item Try other values for the number of nodes in the hidden layer like 75\% of input features of $2n+1$ hidden layer nodes where $n$ is the number of input layer nodes (Reference: \href{https://www.sciencedirect.com/topics/engineering/hidden-layer-node}{Science Direct Topics - Hidden layer node})
-    \item Test the size-factor method on other datasets to see if it works generally
+    \item Try other ways to scale the learning rate (maybe square root of processes instead of linear)
     \item Experiment with other activation functions like Swish or GELU that I did not try in this project
+    \item Test the size-factor method on other datasets to see if it works generally
 \end{enumerate}
 
 \subsection{Better Performance}
 \begin{enumerate}
     \item Test with more than 5 processes using virtual machines on a platform like Google Cloud to see how well it could scale in a Production setting
     \item Find ways to handle even larger datasets that don't fit in memory
-    \item Improve the MPI communication to reduce waiting time between processes
 \end{enumerate}
 
 \subsection{Code Improvements}
 \begin{enumerate}
-    \item Add better logging to track what's happening during training
-    \item Make the code structured in a way that it can be easily reused with other ML algorithms or other gradient updation methods
-    \item Add validation set splitting in addition to train/test split
     \item Tracking more granular timing metrics to identify bottlenecks
-
+    \item Structure the code in a way that it can be easily reused with other ML algorithms or other gradient updation methods
+    \item Add validation set splitting in addition to train/test split
 \end{enumerate}
 
 \end{document}

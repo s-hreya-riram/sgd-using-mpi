@@ -89,12 +89,11 @@ class NeuralNet:
 
 def cyclical_lr(iteration, base_lr=1e-5, step_size=500, max_lr=2e-4):
     """
-    Triangular cyclical learning rate:
+    Triangular cyclical learning rate with cycle length varying based on 
+    batch size (through step_size) and number of processes (noted as size).
     - base_lr: minimum LR
     - max_lr: maximum LR
-    - step_size: number of iterations to reach max_lr from base_lr
-
-    The LR cycles between base_lr and max_lr indefinitely.
+    - step_size: number of iterations to reach max_lr from base_lr.
     """
     cycle = np.floor(1 + iteration / (2 * step_size))
     x = np.abs(iteration / step_size - 2 * cycle + 1)

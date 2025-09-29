@@ -8,7 +8,10 @@ logs/
 /venv/
 build/
 dist/
-.spec
+main.spec
 *-imag*.png
+histogram-1.png
+histogram-2.png
 rmse/
 line plot/
+SGD.pdf

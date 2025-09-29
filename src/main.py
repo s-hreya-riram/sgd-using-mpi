@@ -1,7 +1,3 @@
-
-import multiprocessing
-multiprocessing.set_start_method("fork", force=True)
-
 import os
 
 # Limiting the number of threads to control CPU utilization
