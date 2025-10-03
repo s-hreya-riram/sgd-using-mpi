@@ -208,7 +208,7 @@ The results from the One Hidden Layer Neural Network model using the constant le
 The parameters used to train this model are : \\
 (1) nodes in the hidden layer = $16$ as about half the size of the input features ($30$) (Reference: \href{https://medium.com/data-science/17-rules-of-thumb-for-building-a-neural-network-93356f9930af}{Medium article - Building a Neural Network}), \\
 (2) constant learning rate of $1e-5$, \\
-(3) stopping criterion of $1e-5$ \\
+(3) Stopping criterion: stopping threshold of $1e-5$ for the difference in consecutive batch losses or a max number of iterations of 1000000 \\
 
 \begin{center}
 \includegraphics[width=100mm,scale=0.5]{constant-image1.png }
@@ -267,7 +267,7 @@ In an attempt to slow down convergence and have lower RMSE values, I tried using
 The parameters used to train this model are : \\
 (1) nodes in the hidden layer = $16$ as about half the size of the input features ($30$) (Reference: \href{https://medium.com/data-science/17-rules-of-thumb-for-building-a-neural-network-93356f9930af}{Medium article - Building a Neural Network}), \\
 (2) cyclical learning rate between $1e-5$ and $2e-4$, \\
-(3) stopping criterion of $1e-5$ \\
+(3) Stopping criterion: stopping threshold of $1e-5$ for the difference in consecutive batch losses or a max number of iterations of 1000000 \\
 
 \begin{center}
 \includegraphics[width=90mm,scale=0.5]{cyclic-image1.png }
@@ -322,7 +322,7 @@ This attempt was to purely experiment with the learning rate to see if a custom 
 The parameters used to train this model are : \\
 (1) nodes in the hidden layer = 16 as about half the size of the input features (30) (Reference: \href{https://medium.com/data-science/17-rules-of-thumb-for-building-a-neural-network-93356f9930af}{Medium article - Building a Neural Network}), \\
 (2) cyclical learning rate that cycles based on process count and batch size with base learning rate 1e-5 and varying max learning rate, \\
-(3) stopping criterion of 1e-5 \\
+(3) Stopping criterion: stopping threshold of $1e-5$ for the difference in consecutive batch losses or a max number of iterations of 1000000
 
 \begin{center}
 \includegraphics[width=90mm,scale=0.5]{hybrid-image1.png }
@@ -381,7 +381,7 @@ I updated the stopping criteria to be $1e-6$ (from $1e-5$) to slow down the conv
 The parameters used to train this model are exactly the same as that of Attempt 2 except for the updated stopping criterion noted above: \\
 (1) nodes in the hidden layer = $16$ as about half the size of the input features ($30$) (Reference: \href{https://medium.com/data-science/17-rules-of-thumb-for-building-a-neural-network-93356f9930af}{Medium article - Building a Neural Network}), \\
 (2) cyclical learning rate that cycles based on process count and batch size with base learning rate $1e-6$ and varying max learning rate, \\
-(3) stopping criterion of $1e-6$ \\
+(3) Stopping criterion: stopping threshold of $1e-6$ for the difference in consecutive batch losses or a max number of iterations of 1000000 \\
 
 \begin{center}
 \begin{tabular}{|l|c|c|c|c|c|}

@@ -6,7 +6,7 @@
 PYTHON_SCRIPT="main.py" 
 
 # Experiment parameters
-NUM_PROCESSES=(1 2 3 4 5)
+NUM_PROCESSES=(5)
 FILE_PATH="../data/processed/nytaxi2022_preprocessed_final.csv"
 TEST_RATIO=0.3
 HIDDEN_LAYERS=16
