@@ -175,9 +175,9 @@ mpiexec -n 4 python main.py "../data/processed/nytaxi2022_preprocessed_final.csv
 2. You may choose to run the mpiruns.sh file from your workspace, this already has the experiment parameters configured. You can use the shell script as is or modify the parameters to your liking.
 Once you have the parameters of interest ready, run the code (when you have changed your directory to the src folder within the repository), you can run `./mpiruns.sh`
 
-This code generates logs that will be written to ../../logs/final that includes the 
-|___ train_test_rmse.csv : Data for the final iteration of each run so as to enable
-      plotting i)the train-test RMSE, ii) the training times (avg/max) for each activation function/batch combination.
-|___ training_metrics.csv: Data for each iteration of each run so as to enable
-      plotting i) the training loss against the number of iterations for each activation function/batch size configuration, ii) learning rate trend for the choice of the learning rate,
+This code generates logs that will be written to ../../logs/final that includes the following files:
+- train_test_rmse.csv : Data for the final iteration of each run so as to enable
+plotting i)the train-test RMSE, ii) the training times (avg/max) for each activation function/batch combination.
+- training_metrics.csv: Data for each iteration of each run so as to enable
+plotting i) the training loss against the number of iterations for each activation function/batch size configuration, ii) learning rate trend for the choice of the learning rate,
       
