@@ -268,7 +268,7 @@ def execute_model(model, X_train, y_train, X_test, y_test,
             train_time_max, train_time_avg,
             eval_time_max, eval_time_avg,
             total_time_max, total_time_avg,
-            logfile="../logs/normalization_fix/final/train_test_rmse.csv"
+            logfile="../logs/final/train_test_rmse.csv"
         )
         logger.info(f"[Final Results] Train RMSE: {train_rmse:.4f} | Test RMSE: {test_rmse:.4f}")
         logger.info(f"[Timing Summary] "

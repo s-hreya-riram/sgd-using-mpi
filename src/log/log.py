@@ -22,7 +22,7 @@ def log_test_rmse(num_processes, num_iterations, max_iterations, batch_size, act
         with open(logfile, "a") as f:
             f.write(f"{num_processes},{num_iterations},{max_iterations},{batch_size},{activation},{learning_rate},{train_rmse:.6f},{test_rmse:.6f},{train_time_max:.6f},{train_time_avg:.6f},{test_time_max:.6f},{test_time_avg:.6f},{total_time_max:.6f},{total_time_avg:.6f}\n")
 
-def log_training_metrics(iteration, batch_size, activation, learning_rate, num_processes, training_loss, logfile="../logs/normalization_fix/final/training_metrics.csv"):
+def log_training_metrics(iteration, batch_size, activation, learning_rate, num_processes, training_loss, logfile="../logs/final/training_metrics.csv"):
     """
     Appends training metrics for all iterations to a CSV file. 
     Only rank 0 writes.
