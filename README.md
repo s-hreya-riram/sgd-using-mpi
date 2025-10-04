@@ -143,6 +143,19 @@ Additional notes:
 ## Results and Improvements
 They have been documented in the report in detail using the plotting and tables generated using inference.ipynb under the Jupyter notebooks folder.
 
+## Pre-requisites
+Ensure that you have the latest version of Python and pip installed.
+1. Set up a virtual environment:
+   ```
+   python -m venv venv
+   source ./venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+2. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+
 ## How to run the code
 As a pre-requisite, ensure that you have Python and MPI set up in the machine you are looking to execute this code on.
 
