@@ -150,12 +150,12 @@ The distributed system comprises the following key components that each execute 
 \begin{itemize}
     \item IO and data splitting between train and test : Reading the processed input from the previous step and splitting the data between test and train 
     \item Normalizer: Normalizing the train features and labels, using their mean and stddev to normalize the test data
-    \item Neural Network : Trains the model using Stochastic Gradient Descent for batch updates on the test data until the loss is within a threshold and evaluates the model using the test data. 
+    \item Neural Network: Trains the model using Stochastic Gradient Descent for batch updates on the test data until the loss is within a threshold and evaluates the model using the test data. 
 \end{itemize}
 
 \subsubsection{IO and splitting the data between test and train}
 
-The IO and test-train split can be summarized as follows : \\
+The IO and test-train split can be summarized as follows: \\
 
 Since one of the requirements is to store data nearly evenly among processes, the process with rank $0$ counts the number of rows in the input file and then broadcasts the count to the other processes using the MPI broadcast function:\\
     
@@ -170,7 +170,7 @@ To make the reading more efficient, we perform a chunk-based reading of the proc
 For each process, their local chunks are split into test and train - this is done by generating a permutation of indices using RNG and splitting the indices between test and train.
 
 \subsubsection{Normalizer}
-Within each process, the normalizer executes the standard scaling logic, i.e. centering the data to the global training mean and dividing by the global training stddev (non-zero).
+Within each process, the normalizer executes the standard scaling logic, i.e., centering the data to the global training mean and dividing by the global training stddev (non-zero).
 The global training mean and global training stddev for the training features are computed using the MPI allreduce function:\\
 
 $\verb|feature_fields |= comm.allreduce((\verb|local_feature_sum, local_feature_count|), op=MPI.SUM)$ \\
@@ -199,7 +199,7 @@ Additional notes:
 \begin{enumerate}
     \item Weight initialization: The starting weights are initialized based on the activation function to ensure faster
     convergence following (Reference: \\ \href{https://www.deeplearning.ai/ai-notes/initialization/index.html}{DeepLearning.AI Weight Initialization})
-    \item Learning rate initialization: I tried three types of learning rates - a constant learning rate, a cyclic scheduler learning rate (Reference: \href{https://machinelearningmastery.com/a-gentle-introduction-to-learning-rate-schedulers/}{Learning Rate Schedulers}) and a modified cyclic learning rate (that uses number of processes as a factor), details of the results are in the next section.
+    \item Learning rate initialization: I tried three types of learning rates - a constant learning rate, a cyclic scheduler learning rate (Reference: \href{https://machinelearningmastery.com/a-gentle-introduction-to-learning-rate-schedulers/}{Learning Rate Schedulers}) and a modified cyclic learning rate (that uses number of processes as a factor), details of the results for each of the three have been documented in the next two sections.
 \end{enumerate}
 
 \section{Results}
@@ -230,12 +230,14 @@ Configuration & Iterations & Learning Rate & Train RMSE & Test RMSE & Max Train 
 \end{tabular}
 \end{center}
 
-The constant learning rate demonstrates consistent train-test generalization but suffers from premature convergence, with the best test RMSE around $0.449951$ which is high and suggests room for improvement.
+The constant learning rate demonstrates consistent train-test generalization but suffers from early convergence, with the best test RMSE around $0.449951$ which is high and suggests room for improvement.
 
-The timing plots show interesting patterns in distributed performance. The gap between maximum and average training times reflects MPI synchronization overhead, where the slowest process determines when all processes can proceed. Generally, the max/avg time ratios remain fairly consistent, suggesting that the data is being partitioned effectively across processes. 
+The timing plots show interesting patterns in distributed performance. The gap between maximum and average training times reflects MPI synchronization overhead, where the slowest process determines when all processes can proceed. Generally, the max/avg time ratios remain fairly consistent, suggesting that the data is being partitioned effectively across processes. The spikes/variations could also be attributed to the fact that I was running this code on my local machine. Since my machine has resource constraints and has numerous other processes running, the training times may not be consistent upon repeating a run with the same configurations. 
 
 Some timing spikes appear at a higher number of processes, likely when communication overhead starts outweighing computational benefits. 
 Larger batch sizes tend to perform better in parallel because they increase the computation-to-communication ratio and have lower MPI overhead.
+
+NOTE: The train times indicated in the plots and the tables in the report are all in minutes.
 
 \begin{center}
 \includegraphics[width=90mm,scale=0.5]{constant-image2.png }
@@ -245,7 +247,7 @@ Larger batch sizes tend to perform better in parallel because they increase the 
 \includegraphics[width=90mm,scale=0.5]{constant-image3.png }
 \end{center}
 
-Looking at the training loss curves, there's a clear difference between single-process and multi-process runs. With just one process, the loss shows more spikes and instability, which makes sense since there's no gradient averaging happening. When multiple processes work together, the loss curves become much smoother because gradients are being averaged across processes.
+Looking at the training loss curves, there's a clear difference between single-process and multi-process runs. With just one process, the loss shows more spikes and instability, which makes sense since there's no gradient averaging happening. When using multiple processes, the loss curves become much smoother because gradients are being averaged across processes.
 
 The constant learning rate enables fast convergence, but this speed comes at a cost - the model likely stops improving before finding the best solution.
 
@@ -292,9 +294,9 @@ Configuration & Iterations & Learning Rate & Train RMSE & Test RMSE & Max Train 
 
 The cyclic learning rate shows substantial improvement over constant learning rate, with the best result of 0.209554 RMSE. However, training times are significantly longer due to the cycling nature preventing early convergence.
 
-The cyclic learning rate creates more complex timing patterns than the constant approach. Some specific combinations work really well for parallelization - for instance, ReLU with batch sizes 128 or 512, and sigmoid/leaky ReLU with batch size 256. But the timing isn't always predictable, and sometimes adding more processes doesn't speed things up as much as expected.
+The cyclic learning rate creates more complex timing patterns than the constant approach. Some specific combinations work well for parallelization - for instance, ReLU with batch sizes 128 or 512, and sigmoid/leaky ReLU with batch size 256. The timing isn't always predictable and sometimes adding more processes doesn't speed things up as much as expected.
 
-This happens because the cyclic nature of the learning rate adds computational overhead that varies depending on which activation function used. The training takes longer compared to constant learning rate, but the trade-off is worth it given how much better the final test RMSE values are.
+One possible reason is the cyclic nature of the learning rate that adds computational overhead which varies depending on the activation function used. The training takes longer compared to constant learning rate, but the trade-off is worth it given the improvement in the test RMSE values.
 
 \begin{center}
 \includegraphics[width=90mm,scale=0.5]{cyclic-image2.png }
@@ -304,7 +306,7 @@ This happens because the cyclic nature of the learning rate adds computational o
 \includegraphics[width=90mm,scale=0.5]{cyclic-image3.png }
 \end{center}
 
-Compared to the line chart for constant learning rate, the following line plot suggests that the cyclical scheduler is enabling the model to quickly switch back from large spikes that could mean higher loss due to the cyclic nature of the learning rate. A slower convergence rate can be seen for  certain permutations of parameters \verb|(activation_type, num_processes)| - \\ \verb|((tanh,2 ), (leaky_relu, 2), (elu, 3), (elu, 4), (elu, 5))|
+Compared to the line chart for constant learning rate, the following line plot suggests that the cyclical scheduler is enabling the model to quickly switch back from large spikes i.e., there is higher loss due to the cyclic nature of the learning rate. A slower convergence rate can be seen for  certain permutations of parameters \verb|(activation_type, num_processes)| - \\ \verb|((tanh,2 ), (leaky_relu, 2), (elu, 3), (elu, 4), (elu, 5))|
 
 \begin{center}
 \includegraphics[width=90mm,scale=0.5]{cyclic-image4.png }
@@ -348,7 +350,7 @@ Configuration & Iterations & Learning Rate & Train RMSE & Test RMSE & Max Train 
 
 The size-factor modification is an improvement over standard cyclic learning rate (0.183704 vs 0.209554 RMSE). Most remarkably, the best configuration continues to demonstrate perfect generalization with near-identical train and test RMSE.
 
-By scaling the learning rate with the number of processes, this approach helps compensate for how gradients are averaged across processes in distributed training. While the training takes longer than previous approaches, the quality of results i.e., achieving 0.1837 RMSE with the 1e-5 stopping criterion, compensates for the extra time.
+By scaling the learning rate with the number of processes, this approach helps compensate for how gradients are averaged across processes in distributed training. While training takes longer than previous two approaches, the quality of results i.e., achieving 0.1837 RMSE with the 1e-5 stopping criterion, compensates for the extra time.
 
 Different activation functions show varying timing patterns under this approach, which likely reflects their different computational requirements and how they respond to the scaled learning rate.
 
@@ -397,7 +399,7 @@ Configuration & Iterations & Train RMSE & Test RMSE & Max Train Time \\
 \end{tabular}
 \end{center}
 
-The stricter stopping criterion ($1e-6$) produced even better results, with the best configuration achieving $0.1407$ RMSE and a near perfect train-test generalization. The test RMSE has improved by 23.42\% over the $1e-5$ results.
+The stricter stopping criterion ($1e-6$) produced even better results, with the best configuration achieving $0.1407$ RMSE and a near perfect train-test generalization. The test RMSE has improved by 23.42\% over the $1e-5$ results however the run took about 31x the time taken by the best results obtained using the $1e-5$ stopping threshold.
 
 \subsection{Cross-Method Performance Comparison}
 The evolution from constant to size-factor enhanced learning rates with stricter stopping criteria shows a significant improvement:
@@ -415,12 +417,10 @@ Size-Factor LR (1e-5) & 0.183761 & 59.2\% better & 1.0 \\
 \end{tabular}
 \end{center}
 
-The stricter stopping criterion combined with size-factor scaling achieved the best results, demonstrating that quality improvement justifies the increased training time.
+The stricter stopping criterion combined with size-factor scaling achieved the best results in terms of the test RMSE however, the training time was substantially higher, so depending on the preference for a lower RMSE vs speed, either Approach 2 (faster, higher RMSE) or Approach 3 (slower, lower RMSE) can be chosen unless a more suitable approach is found.
 
 \subsection{Key Learning: Size-Factor Learning Rate}
-The main improvement came from scaling the learning rate by the number of processes. This works because:
-
-When multiple processes average their gradients together, the gradient values become smaller. In an attempt to compensate for it, I multiplied the learning rate by the number of processes to keep the gradient updates strong.\\
+The main improvement compared to the constant learning rate came from scaling the learning rate by both the batch size and the number of processes (reference to Approach 2/3). When multiple processes average their gradients together, the gradient values could become smaller, the compensation by the factor of number of processes keeps the gradient updates suitable enough to help the model learn to generate low test RMSEs.\\
 
 \textbf{Formula used for the effective learning rate (noted as "lr" below)}:
 \begin{lstlisting}
@@ -456,7 +456,8 @@ If I had more time to work on this project, I would explore :
 
 \subsection{Testing Different Approaches}
 \begin{enumerate}
-    \item Try other values for the number of nodes in the hidden layer like 75\% of input features of $2n+1$ hidden layer nodes where $n$ is the number of input layer nodes (Reference: \href{https://www.sciencedirect.com/topics/engineering/hidden-layer-node}{Science Direct Topics - Hidden layer node})
+    \item Try other values for the number of nodes in the hidden layer like 75\% of input features or $2n+1$ hidden layer nodes where $n$ is the number of input layer nodes (Reference: \href{https://www.sciencedirect.com/topics/engineering/hidden-layer-node}{Science Direct Topics - Hidden layer node})
+    \item Experiment with other learning rate schedulers
     \item Try other ways to scale the learning rate (maybe square root of processes instead of linear)
     \item Experiment with other activation functions like Swish or GELU that I did not try in this project
     \item Test the size-factor method on other datasets to see if it works generally
@@ -464,15 +465,15 @@ If I had more time to work on this project, I would explore :
 
 \subsection{Better Performance}
 \begin{enumerate}
-    \item Test with more than 5 processes using virtual machines on a platform like Google Cloud to see how well it could scale in a Production setting
+    \item Test with more than 5 processes using virtual machines on a platform like Google Cloud to see how well it could scale in a Production setting. Additionally, this would isolate the impact of other processes running on my machine, which may have caused spiky/increased training times for certain runs (as also noted in the Results section). 
     \item Find ways to handle even larger datasets that don't fit in memory
 \end{enumerate}
 
 \subsection{Code Improvements}
 \begin{enumerate}
-    \item Tracking more granular timing metrics to identify bottlenecks
+    \item Track more granular timing metrics to identify bottlenecks
     \item Structure the code in a way that it can be easily reused with other ML algorithms or other gradient updation methods
-    \item Add validation set splitting in addition to train/test split
+    \item Add cross-validation to evaluate a good model instead of just computing train and test RMSE since the same hyperparameters could perform poorly on another unknown dataset.
 \end{enumerate}
 
 \end{document}
